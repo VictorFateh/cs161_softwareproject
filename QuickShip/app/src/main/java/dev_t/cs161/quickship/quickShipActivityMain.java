@@ -62,6 +62,7 @@ import com.daasuu.library.easing.Ease;
 import com.daasuu.library.util.Util;
 
 import java.util.ArrayList;
+import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
@@ -135,7 +136,11 @@ public class quickShipActivityMain extends Activity implements Runnable {
     private Bitmap emojiBitmap;
     private Bitmap mHitText;
     private Bitmap mMissText;
+
     private int endCode;
+
+    private float mCellWidth;
+
 
     private static final UUID MY_UUID_INSECURE = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
 
@@ -632,22 +637,32 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 switch (shipTag) {
                     case "image_view_ship_size_2":
                         chooseModeGrid.setShipSelected(quickShipModelBoardSlot.TWO);
+                        changePlacedShipsBitmaps();
+                        mShipSize2.setImageBitmap(scaleDownDrawableImage(R.drawable.ship_size2_horizontal, mShipSize2.getHeight(), mShipSize2.getWidth()));
                         break;
 
                     case "image_view_ship_size_3_a":
                         chooseModeGrid.setShipSelected(quickShipModelBoardSlot.THREE_A);
+                        changePlacedShipsBitmaps();
+                        mShipSize3a.setImageBitmap(scaleDownDrawableImage(R.drawable.ship_size3_a_horizontal, mShipSize3a.getHeight(), mShipSize3a.getWidth()));
                         break;
 
                     case "image_view_ship_size_3_b":
                         chooseModeGrid.setShipSelected(quickShipModelBoardSlot.THREE_B);
+                        changePlacedShipsBitmaps();
+                        mShipSize3b.setImageBitmap(scaleDownDrawableImage(R.drawable.ship_size3_b_horizontal, mShipSize3b.getHeight(), mShipSize3b.getWidth()));
                         break;
 
                     case "image_view_ship_size_4":
                         chooseModeGrid.setShipSelected(quickShipModelBoardSlot.FOUR);
+                        changePlacedShipsBitmaps();
+                        mShipSize4.setImageBitmap(scaleDownDrawableImage(R.drawable.ship_size4_horizontal, mShipSize4.getHeight(), mShipSize4.getWidth()));
                         break;
 
                     case "image_view_ship_size_5":
                         chooseModeGrid.setShipSelected(quickShipModelBoardSlot.FIVE);
+                        changePlacedShipsBitmaps();
+                        mShipSize5.setImageBitmap(scaleDownDrawableImage(R.drawable.ship_size5_horizontal, mShipSize5.getHeight(), mShipSize5.getWidth()));
                         break;
                 }
             } else {
@@ -665,6 +680,36 @@ public class quickShipActivityMain extends Activity implements Runnable {
         mShipSize5.setBackgroundColor(0);
         mSelectedShip = null;
         chooseModeGrid.deSelectShip();
+        changePlacedShipsBitmaps();
+    }
+
+    public void changePlacedShipsBitmaps() {
+        for(int i = 0; i < 100; i++){
+            if(mGameModel.getPlayerGameBoard().getShipSlotAtIndex(i).isOccupied() && mGameModel.getPlayerGameBoard().getShipSlotAtIndex(i).isAnchor()) {
+                quickShipModelBoardSlot currentShip = mGameModel.getPlayerGameBoard().getShipSlotAtIndex(i);
+                switch (currentShip.getShipType()) {
+                    case quickShipModelBoardSlot.TWO:
+                        mShipSize2.setImageBitmap(scaleDownDrawableImage(R.drawable.ship_size2_01_used, mShipSize2.getHeight(), mShipSize2.getWidth()));
+                        break;
+
+                    case quickShipModelBoardSlot.THREE_A:
+                        mShipSize3a.setImageBitmap(scaleDownDrawableImage(R.drawable.ship_size3_01_used, mShipSize3a.getHeight(), mShipSize3a.getWidth()));
+                        break;
+
+                    case quickShipModelBoardSlot.THREE_B:
+                        mShipSize3b.setImageBitmap(scaleDownDrawableImage(R.drawable.ship_size3_02_used, mShipSize3b.getHeight(), mShipSize3b.getWidth()));
+                        break;
+
+                    case quickShipModelBoardSlot.FOUR:
+                        mShipSize4.setImageBitmap(scaleDownDrawableImage(R.drawable.ship_size4_01_used, mShipSize4.getHeight(), mShipSize4.getWidth()));
+                        break;
+
+                    case quickShipModelBoardSlot.FIVE:
+                        mShipSize5.setImageBitmap(scaleDownDrawableImage(R.drawable.ship_size5_01_used, mShipSize5.getHeight(), mShipSize5.getWidth()));
+                        break;
+                }
+            }
+        }
     }
 
     public void play_again_btn(View button) {
@@ -1229,21 +1274,48 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
     public void debugStartAnimationBtn(View v) {
         Float bitmapSize = testGrid.getCellWidth();
-        emojiBitmap = textToBitmap(opponentChosenEmoji, bitmapSize);
+        emojiBitmap = textToBitmap("\uD83D\uDCA9", bitmapSize);
         startAnimation(testGrid.getIndexXYCoord(testGrid.getCurrentIndex()));
     }
 
     public void startAnimation(final float[] slotIndex) {
         if (slotIndex != null) {
             mFPSTextureView.tickStart();
-            createHitTextBitmap(slotIndex);
+            createRocketBitmap(slotIndex);
         }
     }
 
-    private void createHitTextBitmap(float[] slotIndex) {
+    private void createRocketBitmap(final float[] slotIndex) {
         final DisplayObject bitmapDisplay = new DisplayObject();
 
-        bitmapDisplay.with(new BitmapDrawer(emojiBitmap).scaleRegistration(emojiBitmap.getWidth() / 2, emojiBitmap.getHeight() / 2))
+        int rocketOrigin = randInt(0, Math.round(screenWidth));
+        //Log.d("DEBUG", "CELLWIDTH: "+mCellWidth);
+        Bitmap rocket = scaleDownDrawableImage(R.drawable.rocket_01, Math.round(mCellWidth)/2, Math.round(mCellWidth)/2);
+
+        bitmapDisplay.with(new BitmapDrawer(rocket).scaleRegistration(rocket.getWidth() / 2, rocket.getHeight() / 2))
+                .tween()
+                .tweenLoop(false)
+                .transform(rocketOrigin, 0)
+                .to(500, slotIndex[0], slotIndex[1], 0, 1f, 1f, 0, Ease.SINE_IN_OUT)
+                .transform(slotIndex[0], slotIndex[1], Util.convertAlphaFloatToInt(1f), 1f, 1f, 0)
+                .call(new AnimCallBack() {
+                    @Override
+                    public void call() {
+                        mFPSTextureView.removeChild(bitmapDisplay);
+                        createHitTextBitmap(slotIndex);
+                    }
+                })
+                .end();
+
+        mFPSTextureView.addChild(bitmapDisplay);
+    }
+
+    private void createHitTextBitmap(final float[] slotIndex) {
+        final DisplayObject bitmapDisplay = new DisplayObject();
+
+        float initialRotate = (float) randInt(0, 360);
+
+        bitmapDisplay.with(new BitmapDrawer(mHitText).scaleRegistration(mHitText.getWidth() / 2, mHitText.getHeight() / 2))
                 .tween()
                 .tweenLoop(false)
                 .transform(slotIndex[0], slotIndex[1])
@@ -1254,6 +1326,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     @Override
                     public void call() {
                         mFPSTextureView.removeChild(bitmapDisplay);
+                        spawnRandomEmojis(emojiBitmap, slotIndex);
                     }
                 })
                 .end();
@@ -1261,16 +1334,46 @@ public class quickShipActivityMain extends Activity implements Runnable {
         mFPSTextureView.addChild(bitmapDisplay);
     }
 
-    public void startEmojiSpawning(final float[] slotIndex) {
+    public void spawnRandomEmojis(final Bitmap mBitmap, final float[] slotIndex) {
         Timer mTimer = new Timer();
-        mTimer.schedule(new TimerTask() {
+        mTimer.scheduleAtFixedRate(new TimerTask() {
+            long t0 = System.currentTimeMillis();
             @Override
             public void run() {
-                for (int i = 0; i < 2; i++) {
-                    createParabolicMotionBitmap(emojiBitmap);
+                if (System.currentTimeMillis() - t0 > 1 * 1000) {
+                    cancel();
+                }
+                else {
+                    int randomAmount = randInt(1,3);
+                    for (int i = 0; i < randomAmount; i++) {
+                        animateRandomEmoji(mBitmap, slotIndex);
+                    }
                 }
             }
         }, 0, 300);
+    }
+
+    public void animateRandomEmoji(Bitmap mBitmap, final float[] slotIndex) {
+        final DisplayObject bitmapDisplay = new DisplayObject();
+
+        float initialRotate = (float) randInt(0, 360);
+
+        bitmapDisplay.with(new BitmapDrawer(mBitmap).scaleRegistration(mBitmap.getWidth() / 2, mBitmap.getHeight() / 2).rotateRegistration(initialRotate, mBitmap.getHeight()/2))
+                .tween()
+                .tweenLoop(false)
+                .transform(slotIndex[0], slotIndex[1], Util.convertAlphaFloatToInt(1f), 1f, 1f, initialRotate)
+                .to(500, slotIndex[0], slotIndex[1], 0, 5f, 5f, initialRotate, Ease.SINE_IN_OUT)
+                .waitTime(400)
+                .transform(slotIndex[0], slotIndex[1], Util.convertAlphaFloatToInt(1f), 1f, 1f, initialRotate)
+                .call(new AnimCallBack() {
+                    @Override
+                    public void call() {
+                        mFPSTextureView.removeChild(bitmapDisplay);
+                    }
+                })
+                .end();
+
+        mFPSTextureView.addChild(bitmapDisplay);
     }
 
     private void createParabolicMotionBitmap(Bitmap mBitmap) {
@@ -1294,7 +1397,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
     }
 
     public void emojiPopUpInitializer() {
-        FrameLayout root = (FrameLayout) findViewById(R.id.root_frame);
+        //FrameLayout root = (FrameLayout) findViewById(R.id.root_frame);
+        LinearLayout root = (LinearLayout) findViewById(R.id.play_mode_opponent_top_linear);
         emojiPopup = new EmojiconsPopup(root, this);
 
         Double widthWithMargin = screenWidth * 0.9;
@@ -1354,5 +1458,22 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
     public void setMissText(Bitmap b) {
         mMissText = b;
+    }
+
+    // Pick a random number
+    public static int randInt(int min, int max) {
+
+        // Usually this can be a field rather than a method variable
+        Random rand = new Random();
+
+        // nextInt is normally exclusive of the top value,
+        // so add 1 to make it inclusive
+        int randomNum = rand.nextInt((max - min) + 1) + min;
+
+        return randomNum;
+    }
+
+    public void setCellWidth(float cellWidth) {
+        mCellWidth = cellWidth;
     }
 }
