@@ -136,6 +136,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
     private Bitmap emojiBitmap;
     private Bitmap mHitText;
     private Bitmap mMissText;
+    private float mCellWidth;
 
     private static final UUID MY_UUID_INSECURE = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
 
@@ -1265,8 +1266,33 @@ public class quickShipActivityMain extends Activity implements Runnable {
     public void startAnimation(final float[] slotIndex) {
         if (slotIndex != null) {
             mFPSTextureView.tickStart();
-            createHitTextBitmap(slotIndex);
+            createRocketBitmap(slotIndex);
         }
+    }
+
+    private void createRocketBitmap(final float[] slotIndex) {
+        final DisplayObject bitmapDisplay = new DisplayObject();
+
+        int rocketOrigin = randInt(0, Math.round(screenWidth));
+        //Log.d("DEBUG", "CELLWIDTH: "+mCellWidth);
+        Bitmap rocket = scaleDownDrawableImage(R.drawable.rocket_01, Math.round(mCellWidth)/2, Math.round(mCellWidth)/2);
+
+        bitmapDisplay.with(new BitmapDrawer(rocket).scaleRegistration(rocket.getWidth() / 2, rocket.getHeight() / 2))
+                .tween()
+                .tweenLoop(false)
+                .transform(rocketOrigin, 0)
+                .to(500, slotIndex[0], slotIndex[1], 0, 1f, 1f, 0, Ease.SINE_IN_OUT)
+                .transform(slotIndex[0], slotIndex[1], Util.convertAlphaFloatToInt(1f), 1f, 1f, 0)
+                .call(new AnimCallBack() {
+                    @Override
+                    public void call() {
+                        mFPSTextureView.removeChild(bitmapDisplay);
+                        createHitTextBitmap(slotIndex);
+                    }
+                })
+                .end();
+
+        mFPSTextureView.addChild(bitmapDisplay);
     }
 
     private void createHitTextBitmap(final float[] slotIndex) {
@@ -1291,19 +1317,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 .end();
 
         mFPSTextureView.addChild(bitmapDisplay);
-    }
-
-    public void startEmojiSpawning(final float[] slotIndex) {
-        Timer mTimer = new Timer();
-
-        mTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                for (int i = 0; i < 2; i++) {
-                    createParabolicMotionBitmap(emojiBitmap);
-                }
-            }
-        }, 0, 300);
     }
 
     public void spawnRandomEmojis(final Bitmap mBitmap, final float[] slotIndex) {
@@ -1443,5 +1456,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
         int randomNum = rand.nextInt((max - min) + 1) + min;
 
         return randomNum;
+    }
+
+    public void setCellWidth(float cellWidth) {
+        mCellWidth = cellWidth;
     }
 }

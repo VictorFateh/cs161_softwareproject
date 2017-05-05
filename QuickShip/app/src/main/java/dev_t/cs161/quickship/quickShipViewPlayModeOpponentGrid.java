@@ -160,6 +160,8 @@ public class quickShipViewPlayModeOpponentGrid extends View {
         mMainActivity.setHitText(mMainActivity.scaleDownDrawableImage(R.drawable.hit, Math.round(boardGridCellHeight), Math.round(boardGridCellWidth)));
         mMainActivity.setMissText(mMainActivity.scaleDownDrawableImage(R.drawable.miss, Math.round(boardGridCellHeight), Math.round(boardGridCellWidth)));
 
+        mMainActivity.setCellWidth(boardGridCellWidth);
+
         hitSquare = new Rect();
 
         viewWidth = screenWidth;
