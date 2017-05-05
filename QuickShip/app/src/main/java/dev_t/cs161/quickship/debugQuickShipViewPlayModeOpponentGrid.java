@@ -149,11 +149,12 @@ public class debugQuickShipViewPlayModeOpponentGrid extends View {
         boardGridCellWidth = boardGridFrameWidth / 10;
         boardGridCellHeight = boardGridFrameHeight / 10;
 
-        String hitString = mMainActivity.getResources().getString(R.string.hit_text);
-        String missString = mMainActivity.getResources().getString(R.string.miss_text);
+        Log.d("DEBUG", "ROCKET: "+boardGridCellWidth);
 
-        mMainActivity.setHitText(mMainActivity.textToBitmap(hitString, boardGridCellWidth));
-        mMainActivity.setMissText(mMainActivity.textToBitmap(missString, boardGridCellWidth));
+        mMainActivity.setHitText(mMainActivity.scaleDownDrawableImage(R.drawable.hit, Math.round(boardGridCellHeight), Math.round(boardGridCellWidth)));
+        mMainActivity.setMissText(mMainActivity.scaleDownDrawableImage(R.drawable.miss, Math.round(boardGridCellHeight), Math.round(boardGridCellWidth)));
+
+        mMainActivity.setCellWidth(boardGridCellWidth);
 
         hitSquare = new Rect();
 
