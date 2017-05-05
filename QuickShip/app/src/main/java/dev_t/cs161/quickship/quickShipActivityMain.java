@@ -1274,7 +1274,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
         float initialRotate = (float) randInt(0, 360);
 
-        bitmapDisplay.with(new BitmapDrawer(emojiBitmap).scaleRegistration(emojiBitmap.getWidth() / 2, emojiBitmap.getHeight() / 2))
+        bitmapDisplay.with(new BitmapDrawer(mHitText).scaleRegistration(mHitText.getWidth() / 2, mHitText.getHeight() / 2))
                 .tween()
                 .tweenLoop(false)
                 .transform(slotIndex[0], slotIndex[1])
@@ -1312,7 +1312,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
             long t0 = System.currentTimeMillis();
             @Override
             public void run() {
-                if (System.currentTimeMillis() - t0 > 10 * 1000) {
+                if (System.currentTimeMillis() - t0 > 1 * 1000) {
                     cancel();
                 }
                 else {
