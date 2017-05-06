@@ -151,8 +151,8 @@ public class debugQuickShipViewPlayModeOpponentGrid extends View {
 
         Log.d("DEBUG", "ROCKET: "+boardGridCellWidth);
 
-        mMainActivity.setHitText(mMainActivity.scaleDownDrawableImage(R.drawable.hit, Math.round(boardGridCellHeight), Math.round(boardGridCellWidth)));
-        mMainActivity.setMissText(mMainActivity.scaleDownDrawableImage(R.drawable.miss, Math.round(boardGridCellHeight), Math.round(boardGridCellWidth)));
+        mMainActivity.setHitText(mMainActivity.scaleDownDrawableImage(R.drawable.marker_hit, Math.round(boardGridCellHeight), Math.round(boardGridCellWidth)));
+        mMainActivity.setMissText(mMainActivity.scaleDownDrawableImage(R.drawable.marker_miss, Math.round(boardGridCellHeight), Math.round(boardGridCellWidth)));
 
         mMainActivity.setCellWidth(boardGridCellWidth);
 
