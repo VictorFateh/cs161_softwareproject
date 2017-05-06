@@ -136,7 +136,11 @@ public class quickShipActivityMain extends Activity implements Runnable {
     private Bitmap emojiBitmap;
     private Bitmap mHitText;
     private Bitmap mMissText;
+
+    private int endCode;
+
     private float mCellWidth;
+
 
     private static final UUID MY_UUID_INSECURE = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
 
@@ -156,6 +160,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
     public void initializeView() {
         setContentView(R.layout.quickship_main_screen);
         mActivityMain = this;
+
+        endCode = 0;
 
         mSplashScreenPlayerName = (EditText) findViewById(R.id.splash_screen_player_name);
         mPlayModeStatusText = (TextView) findViewById(R.id.play_mode_status);
@@ -1209,11 +1215,16 @@ public class quickShipActivityMain extends Activity implements Runnable {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        endCode = 1;
         if (btAdapter != null)
             btAdapter.cancelDiscovery();
         // Don't forget to unregister the ACTION_FOUND receiver.
         if (mBtReceiver != null)
             unregisterReceiver(mBtReceiver);
+    }
+
+    public int getEndCode() {
+        return endCode;
     }
 
     @Override
