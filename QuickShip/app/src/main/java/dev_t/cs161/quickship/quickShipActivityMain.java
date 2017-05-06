@@ -1309,8 +1309,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 .tweenLoop(false)
                 .transform(slotIndex[0], slotIndex[1])
                 .to(500, slotIndex[0], slotIndex[1], 0, 6f, 6f, 0, Ease.SINE_IN_OUT)
-                .waitTime(400)
-                .transform(slotIndex[0], slotIndex[1], Util.convertAlphaFloatToInt(1f), 1f, 1f, 0)
                 .call(new AnimCallBack() {
                     @Override
                     public void call() {
@@ -1318,6 +1316,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         spawnRandomEmojis(emojiBitmap, slotIndex);
                     }
                 })
+                .waitTime(400)
+                .transform(slotIndex[0], slotIndex[1], Util.convertAlphaFloatToInt(1f), 1f, 1f, 0)
                 .end();
 
         mFPSTextureView.addChild(bitmapDisplay);
@@ -1347,7 +1347,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
         float initialRotate = (float) randInt(0, 360);
 
-        bitmapDisplay.with(new BitmapDrawer(mBitmap).scaleRegistration(mBitmap.getWidth() / 2, mBitmap.getHeight() / 2).rotateRegistration(initialRotate, mBitmap.getHeight()/2))
+        bitmapDisplay.with(new BitmapDrawer(mBitmap))
                 .tween()
                 .tweenLoop(false)
                 .transform(slotIndex[0], slotIndex[1], Util.convertAlphaFloatToInt(1f), 1f, 1f, initialRotate)
