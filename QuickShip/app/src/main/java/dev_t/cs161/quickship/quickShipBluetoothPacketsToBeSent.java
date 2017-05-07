@@ -22,11 +22,16 @@ public class quickShipBluetoothPacketsToBeSent implements Parcelable {
     static final int QUIT = 5;
     static final int NAME_CHANGE = 6;
     static final int DISCONNECTED = 7;
+    static final int UUID = 8;
+    static final int ANIMATIONDONE = 9;
 
     public quickShipBluetoothPacketsToBeSent(int packetType, String stringType) {
         this.packetType = packetType;
         if (packetType == CHAT) {
             this.chatMessage = stringType;
+        }
+        else if (packetType == UUID) {
+            this.playerID = stringType;
         }
     }
     public quickShipBluetoothPacketsToBeSent(int packetType, byte [] byteArray) {

@@ -255,7 +255,6 @@ public class quickShipViewPlayModePlayerGrid extends View {
                     break;
                 default:
             }
-            invalidate();
         }
         return true;
     }

@@ -299,7 +299,7 @@ public class quickShipViewPlayModeOpponentGrid extends View {
                     } else if (abs(initialX - endX) > swipeThreshold) {
                         mMainActivity.playModeSwitchToPlayerGrid(null);
                     } else {
-                        if (!mMainActivity.isPlayerTurnDone()) {
+                        if (!mMainActivity.isPlayerTurnDone() && !mMainActivity.getGameOver()) {
                             if (endX >= boardGridFrameStartX && endX <= boardGridFrameEndX && endY >= boardGridFrameStartY && endY <= boardGridFrameEndY && abs(endX - initialX) < 5 && abs(endY - initialY) < 5) {
                                 selectedIndex = calculateCellTouched(initialX, initialY);
                                 if (!mGameModel.getOpponentGameBoard().isHit(selectedIndex)) {
@@ -316,6 +316,7 @@ public class quickShipViewPlayModeOpponentGrid extends View {
                             } else {
                                 deSelectCell();
                             }
+                            invalidate();
                         }
                     }
                     held = false;
@@ -326,8 +327,6 @@ public class quickShipViewPlayModeOpponentGrid extends View {
                     break;
                 default:
             }
-
-            invalidate();
         }
         return true;
     }

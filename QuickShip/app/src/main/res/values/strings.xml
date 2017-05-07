@@ -20,11 +20,17 @@
     <string name="play_mode_player_grid_btn">Your Board</string>
     <string name="play_mode_opponent_grid_btn">Enemy Board</string>
     <string name="play_mode_options_btn">Options</string>
+    <string name="play_mode_new_turn_msg1">New Round!</string>
+    <string name="play_mode_game_won">You Won!</string>
+    <string name="play_mode_game_lost">You Lost!</string>
+    <string name="play_mode_game_draw">Draw Game!</string>
 
     <string name="game_over_play_again_btn">Play Again</string>
 
     <string name="hit_text">Hit!</string>
     <string name="miss_text">Miss!</string>
 
-    <string name="new_turn_msg1">New Round!</string>
+    <string name="options_title">Options</string>
+    <string name="options_quit_btn">Quit</string>
+    <string name="options_enable_animation_text">Enable Emoji Animations</string>
 </resources>
