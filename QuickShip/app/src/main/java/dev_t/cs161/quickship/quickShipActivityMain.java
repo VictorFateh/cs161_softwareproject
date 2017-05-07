@@ -43,6 +43,8 @@ import android.view.animation.AnimationUtils;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -67,6 +69,10 @@ import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 public class quickShipActivityMain extends Activity implements Runnable {
 
@@ -127,6 +133,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
     private boolean playerTurnDone;
     private boolean opponentTurnDone;
     private boolean gameOver;
+    private boolean debugButtons;
+    private int gameOverStatus;
     private int playerChosenTarget;
     private int opponentChosenTarget;
     private String playerChosenEmoji;
@@ -139,8 +147,10 @@ public class quickShipActivityMain extends Activity implements Runnable {
     private Bitmap mMissText;
     private int endCode;
     private float mCellWidth;
+    private boolean enableAnimation;
     private int animationStage;
     private boolean animating;
+    private boolean opponentAnimating;
     private boolean animateFirst;
     private String playerUUID;
     private String opponentUUID;
@@ -148,6 +158,10 @@ public class quickShipActivityMain extends Activity implements Runnable {
     static final int ANIMSTAGE2 = 1;
     static final int ANIMSTAGE3 = 2;
     static final int ANIMSTAGE4 = 3;
+    static final int ANIMSTAGE5 = 4;
+    static final int WON = 0;
+    static final int LOST = 1;
+    static final int DRAW = 2;
 
     private static final UUID MY_UUID_INSECURE = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
 
@@ -179,8 +193,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
         mSplashScreenFrameLayout = (FrameLayout) findViewById(R.id.splash_screen);
         mTempSelectedShip = (ImageView) findViewById(R.id.temp_ship_spot);
         mPlayModeFireBtn = (Button) findViewById(R.id.play_mode_fire_btn);
-        mPlayModeFireBtn.setEnabled(false);
-        mPlayModeFireBtn.setBackgroundResource(R.drawable.firebutton_01_disabled);
 
         mPlayModeFireBtn.setOnTouchListener(new View.OnTouchListener() {
             @Override
@@ -317,6 +329,37 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
         startGame = (Button) findViewById(R.id.start_game_btn);
         mBluetoothEnableButton = (Button) findViewById(R.id.splash_creen_bluetooth_btn);
+
+        SharedPreferences preferences = getSharedPreferences("quickShipSettings", MODE_PRIVATE);
+        enableAnimation = preferences.getBoolean("enableAnimation", true);
+
+        CheckBox enableAnimationCheckbox = (CheckBox) findViewById(R.id.enable_animation_checkbox);
+        if (enableAnimation) {
+            enableAnimationCheckbox.setChecked(true);
+        } else {
+            enableAnimationCheckbox.setChecked(false);
+        }
+
+        enableAnimationCheckbox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    enableAnimation = true;
+                    SharedPreferences preferences = getSharedPreferences("quickShipSettings", MODE_PRIVATE);
+                    SharedPreferences.Editor editor = preferences.edit();
+                    editor.putBoolean("enableAnimation", true);
+                    editor.commit();
+                } else {
+                    enableAnimation = false;
+                    SharedPreferences preferences = getSharedPreferences("quickShipSettings", MODE_PRIVATE);
+                    SharedPreferences.Editor editor = preferences.edit();
+                    editor.putBoolean("enableAnimation", false);
+                    editor.commit();
+                }
+            }
+        });
+
+        mSplashScreenPlayerName.setText(mPlayerName);
 
         otherViewsInitializeObjects();
 
@@ -568,27 +611,33 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
     public void newGame() {
         gameOver = false;
+        debugButtons = false;
+        gameOverStatus = 3;
         turnCount = 1;
-        playerUUID = "";
+        playerUUID = UUID.randomUUID().toString();
+        ;
         opponentUUID = "";
         messages.setLength(0);
         animating = false;
         playerChooseModeDone = false;
         opponentChooseModeDone = false;
-        animateFirst = false;
+        opponentAnimating = false;
+        animateFirst = true;
         playerTurnDone = false;
         opponentTurnDone = false;
         mPlayModeStatusText.setVisibility(View.INVISIBLE);
+        mPlayModeFireBtn.setEnabled(false);
+        mPlayModeFireBtn.setBackgroundResource(R.drawable.firebutton_01_disabled);
         mGameModel = new quickShipModel();
         chooseModeGrid.setGameModel(mGameModel);
         playModeOpponentGrid.setGameModel(mGameModel);
         playModePlayerGrid.setGameModel(mGameModel);
+        mPlayModeFireBtn.setText("");
+        mPlayModeStatusText.setText("");
         chooseModeGrid.invalidate();
         playModeOpponentGrid.invalidate();
         playModePlayerGrid.invalidate();
-        mPlayModeStatusText.setText("");
         //mPlayModeFireBtn.setText("Fire!");
-        running = true;
     }
 
     public void switchToPlayModeScreen(View view) {
@@ -756,6 +805,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
     public void checkChooseModeDone(String status) {
         if (playerChooseModeDone && opponentChooseModeDone) {
+            quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.UUID, playerUUID);
+            mBluetoothConnection.write(ParcelableUtil.marshall(data));
             mainScreenViewFlipper.setDisplayedChild(2);
             cachePlayModeViews();
             reinitializeUI();
@@ -790,28 +841,95 @@ public class quickShipActivityMain extends Activity implements Runnable {
         if (!gameOver) {
             emojiPopup.showAtBottom();
         } else {
-            // Add bluetooth disconnection code here
-            mainScreenViewFlipper.setDisplayedChild(0);
-            mBluetoothConnection.disconnect_threads();
+            quitGame(null);
+        }
+    }
 
+    public void quitGame(View v) {
+        gameOver = false;
+        animating = false;
+        mFPSTextureView.removeAllChildren();
+        playerChooseModeDone = false;
+        opponentChooseModeDone = false;
+        playerTurnDone = false;
+        opponentTurnDone = false;
+
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+        scheduler.schedule(new Runnable() {
+            @Override
+            public void run() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        pauseAnimation();
+                        mainScreenViewFlipper.setDisplayedChild(0);
+                        mBluetoothConnection.disconnect_threads();
+                    }
+                });
+            }
+        }, 800, TimeUnit.MILLISECONDS);
+    }
+
+    public void receivedAnimationStatus() {
+        opponentAnimating = false;
+        if (!enableAnimation) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mPlayModeStatusText.setText("");
+                    mPlayModeStatusText.setVisibility(View.INVISIBLE);
+                }
+            });
+            nextAnimation();
+        }
+    }
+
+    public void receivedOpponentUUID(String UUID) {
+        this.opponentUUID = UUID;
+        if (playerUUID.compareTo(opponentUUID) >= 1) {
+            animateFirst = true;
+        } else {
+            animateFirst = false;
         }
     }
 
     public void checkPlayModeTurnDone(String status) {
         if (playerTurnDone && opponentTurnDone) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    animating = true;
-                    animationStage = 0;
-                    mPlayModeStatusText.setVisibility(View.INVISIBLE);
-                    mPlayModeEditTextSend.setEnabled(false);
-                    playModeOpponentGrid.deSelectCell();
-                    playModeOpponentGrid.invalidate();
-                    mFPSTextureView.tickStart();
-                    nextAnimation();
-                }
-            });
+            if (enableAnimation) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        animating = true;
+                        opponentAnimating = false;
+                        animationStage = 0;
+                        mPlayModeStatusText.setVisibility(View.INVISIBLE);
+                        mPlayModeEditTextSend.setEnabled(false);
+                        playModeOpponentGrid.deSelectCell();
+                        playModeOpponentGrid.invalidate();
+                        mFPSTextureView.removeAllChildren();
+                        mFPSTextureView.tickStart();
+                        nextAnimation();
+                    }
+                });
+            } else {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        animating = true;
+                        opponentAnimating = true;
+                        animationStage = 2;
+                        mPlayModeStatusText.setVisibility(View.INVISIBLE);
+                        mPlayModeEditTextSend.setEnabled(false);
+                        playModeOpponentGrid.deSelectCell();
+                        refreshOpponentBoard();
+                        refreshPlayerBoard();
+                        mFPSTextureView.removeAllChildren();
+                        mFPSTextureView.tickStart();
+                        nextAnimation();
+                    }
+                });
+            }
         } else {
             mPlayModeFireBtn.setEnabled(false);
             if (status.equals("player")) {
@@ -842,20 +960,106 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 }
                 break;
             case quickShipActivityMain.ANIMSTAGE3:
-                boolean playerGameOver = mGameModel.getPlayerGameBoard().checkGameOver();
-                boolean opponentGameOver = mGameModel.getOpponentGameBoard().checkGameOver();
-                if (!playerGameOver && !opponentGameOver) {
-                    createNewTurnMsgBitmap();
-                } else {
-                    gameOver = true;
+                quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.ANIMATIONDONE, true);
+                mBluetoothConnection.write(ParcelableUtil.marshall(data));
+                if (!opponentAnimating) {
                     animationStage++;
                     nextAnimation();
+                } else {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mPlayModeStatusText.setText("Waiting on opponent...");
+                            mPlayModeStatusText.setVisibility(View.VISIBLE);
+                        }
+                    });
                 }
                 break;
             case quickShipActivityMain.ANIMSTAGE4:
+                boolean playerGameOver = mGameModel.getPlayerGameBoard().checkGameOver();
+                boolean opponentGameOver = mGameModel.getOpponentGameBoard().checkGameOver();
+                if (!debugButtons && !playerGameOver && !opponentGameOver) {
+                    createNewTurnMsgBitmap();
+                } else {
+                    gameOver = true;
+                    if (!debugButtons) {
+                        if (playerGameOver && opponentGameOver) {
+                            gameOverStatus = quickShipActivityMain.DRAW;
+                        } else if (playerGameOver) {
+                            gameOverStatus = quickShipActivityMain.WON;
+                        } else {
+                            gameOverStatus = quickShipActivityMain.LOST;
+                        }
+                    }
+                    animationStage++;
+                    startGameOverAnimation();
+                    nextAnimation();
+                }
+                break;
+            case quickShipActivityMain.ANIMSTAGE5:
                 startNextTurn();
                 break;
         }
+    }
+
+    public void debugWinGame(View v) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                gameOver = true;
+                debugButtons = true;
+                gameOverStatus = quickShipActivityMain.WON;
+                animating = true;
+                opponentAnimating = false;
+                animationStage = 2;
+                mPlayModeStatusText.setVisibility(View.INVISIBLE);
+                mPlayModeEditTextSend.setEnabled(false);
+                playModeOpponentGrid.deSelectCell();
+                playModeOpponentGrid.invalidate();
+                mFPSTextureView.tickStart();
+                nextAnimation();
+            }
+        });
+    }
+
+    public void debugLoseGame(View v) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                gameOver = true;
+                debugButtons = true;
+                gameOverStatus = quickShipActivityMain.LOST;
+                animating = true;
+                opponentAnimating = false;
+                animationStage = 2;
+                mPlayModeStatusText.setVisibility(View.INVISIBLE);
+                mPlayModeEditTextSend.setEnabled(false);
+                playModeOpponentGrid.deSelectCell();
+                playModeOpponentGrid.invalidate();
+                mFPSTextureView.tickStart();
+                nextAnimation();
+            }
+        });
+    }
+
+    public void debugDrawGame(View v) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                gameOver = true;
+                debugButtons = true;
+                gameOverStatus = quickShipActivityMain.DRAW;
+                animating = true;
+                opponentAnimating = false;
+                animationStage = 2;
+                mPlayModeStatusText.setVisibility(View.INVISIBLE);
+                mPlayModeEditTextSend.setEnabled(false);
+                playModeOpponentGrid.deSelectCell();
+                playModeOpponentGrid.invalidate();
+                mFPSTextureView.tickStart();
+                nextAnimation();
+            }
+        });
     }
 
     public boolean isPlayerChooseModeDone() {
@@ -967,6 +1171,14 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         checkPlayModeTurnDone("opponent");
                         break;
 
+                    case quickShipBluetoothPacketsToBeSent.ANIMATIONDONE:
+                        receivedAnimationStatus();
+                        break;
+
+                    case quickShipBluetoothPacketsToBeSent.UUID:
+                        receivedOpponentUUID(data.getPlayerID());
+                        break;
+
                     case quickShipBluetoothPacketsToBeSent.TURN_DONE:
                         break;
 
@@ -980,6 +1192,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         break;
 
                     case quickShipBluetoothPacketsToBeSent.DISCONNECTED:
+                        quitGame(null);
                         AlertDialog alertDialog = new AlertDialog.Builder(mActivityMain).create();
                         alertDialog.setTitle("Player Has Disconnected");
                         alertDialog.setMessage("Returning to main screen.");
@@ -990,8 +1203,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                                                   }
                                               });
                         alertDialog.show();
-                        mainScreenViewFlipper.setDisplayedChild(0);
-                        mBluetoothConnection.disconnect_threads();
                         break;
                 }
             } else if (intent.getBooleanExtra("startGame", false)) {
@@ -1287,58 +1498,58 @@ public class quickShipActivityMain extends Activity implements Runnable {
         mOpponentGridBtn.setPressed(false);
         mPlayModeOptionsBtn.setPressed(false);
         mPlayerGridBtn.setPressed(true);
-        new java.util.Timer().schedule(
-                new java.util.TimerTask() {
+
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        scheduler.schedule(new Runnable() {
+            @Override
+            public void run() {
+                runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                emojiPopup.dismiss();
-                                playModeFlipper.setDisplayedChild(1);
-                                mPlayerGridBtn.setPressed(false);
-                                mPlayModeOptionsBtn.setPressed(false);
-                                mOpponentGridBtn.setPressed(true);
-                            }
-                        });
+                        emojiPopup.dismiss();
+                        playModeFlipper.setDisplayedChild(1);
+                        mPlayerGridBtn.setPressed(false);
+                        mPlayModeOptionsBtn.setPressed(false);
+                        mOpponentGridBtn.setPressed(true);
                     }
-                }, 100);
+                });
+            }
+        }, 100, TimeUnit.MILLISECONDS);
     }
 
     public void startPlayerBoardAnimation() {
-
-        new java.util.Timer().schedule(
-                new java.util.TimerTask() {
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        scheduler.schedule(new Runnable() {
+            @Override
+            public void run() {
+                runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (playModeFlipper.getDisplayedChild() == 1 || playModeFlipper.getDisplayedChild() == 2) {
-                                    playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_left));
-                                    playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_right));
-                                    playModeFlipper.getInAnimation().setAnimationListener(new Animation.AnimationListener() {
-                                        public void onAnimationStart(Animation animation) {
-                                        }
+                        if (playModeFlipper.getDisplayedChild() == 1 || playModeFlipper.getDisplayedChild() == 2) {
+                            playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_left));
+                            playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_right));
+                            playModeFlipper.getInAnimation().setAnimationListener(new Animation.AnimationListener() {
+                                public void onAnimationStart(Animation animation) {
+                                }
 
-                                        public void onAnimationRepeat(Animation animation) {
-                                        }
+                                public void onAnimationRepeat(Animation animation) {
+                                }
 
-                                        public void onAnimationEnd(Animation animation) {
-                                            startPlayerBoardAnimation2();
-                                        }
-                                    });
-                                    playModeFlipper.setDisplayedChild(0);
-                                    mOpponentGridBtn.setPressed(false);
-                                    mPlayModeOptionsBtn.setPressed(false);
-                                    mPlayerGridBtn.setPressed(true);
-                                } else {
+                                public void onAnimationEnd(Animation animation) {
                                     startPlayerBoardAnimation2();
                                 }
-                            }
-                        });
+                            });
+                            playModeFlipper.setDisplayedChild(0);
+                            mOpponentGridBtn.setPressed(false);
+                            mPlayModeOptionsBtn.setPressed(false);
+                            mPlayerGridBtn.setPressed(true);
+                        } else {
+                            startPlayerBoardAnimation2();
+                        }
                     }
-                }, 1000);
+                });
+            }
+        }, 1000, TimeUnit.MILLISECONDS);
     }
 
     public void startPlayerBoardAnimation2() {
@@ -1355,43 +1566,43 @@ public class quickShipActivityMain extends Activity implements Runnable {
     }
 
     public void startOpponentBoardAnimation() {
-        new java.util.Timer().schedule(
-                new java.util.TimerTask() {
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        scheduler.schedule(new Runnable() {
+            @Override
+            public void run() {
+                runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 2) {
-                                    if (playModeFlipper.getDisplayedChild() == 0) {
-                                        playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_right));
-                                        playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_left));
-                                    } else {
-                                        playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_left));
-                                        playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_right));
-                                    }
-                                    playModeFlipper.getInAnimation().setAnimationListener(new Animation.AnimationListener() {
-                                        public void onAnimationStart(Animation animation) {
-                                        }
+                        if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 2) {
+                            if (playModeFlipper.getDisplayedChild() == 0) {
+                                playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_right));
+                                playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_left));
+                            } else {
+                                playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_left));
+                                playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_right));
+                            }
+                            playModeFlipper.getInAnimation().setAnimationListener(new Animation.AnimationListener() {
+                                public void onAnimationStart(Animation animation) {
+                                }
 
-                                        public void onAnimationRepeat(Animation animation) {
-                                        }
+                                public void onAnimationRepeat(Animation animation) {
+                                }
 
-                                        public void onAnimationEnd(Animation animation) {
-                                            startOpponentBoardAnimation2();
-                                        }
-                                    });
-                                    playModeFlipper.setDisplayedChild(1);
-                                    mPlayerGridBtn.setPressed(false);
-                                    mPlayModeOptionsBtn.setPressed(false);
-                                    mOpponentGridBtn.setPressed(true);
-                                } else {
+                                public void onAnimationEnd(Animation animation) {
                                     startOpponentBoardAnimation2();
                                 }
-                            }
-                        });
+                            });
+                            playModeFlipper.setDisplayedChild(1);
+                            mPlayerGridBtn.setPressed(false);
+                            mPlayModeOptionsBtn.setPressed(false);
+                            mOpponentGridBtn.setPressed(true);
+                        } else {
+                            startOpponentBoardAnimation2();
+                        }
                     }
-                }, 1000);
+                });
+            }
+        }, 1000, TimeUnit.MILLISECONDS);
     }
 
     public void startOpponentBoardAnimation2() {
@@ -1407,43 +1618,43 @@ public class quickShipActivityMain extends Activity implements Runnable {
     }
 
     public void startNextTurn() {
-        new java.util.Timer().schedule(
-                new java.util.TimerTask() {
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        scheduler.schedule(new Runnable() {
+            @Override
+            public void run() {
+                runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 2) {
-                                    if (playModeFlipper.getDisplayedChild() == 0) {
-                                        playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_right));
-                                        playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_left));
-                                    } else {
-                                        playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_left));
-                                        playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_right));
-                                    }
-                                    playModeFlipper.getInAnimation().setAnimationListener(new Animation.AnimationListener() {
-                                        public void onAnimationStart(Animation animation) {
-                                        }
+                        if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 2) {
+                            if (playModeFlipper.getDisplayedChild() == 0) {
+                                playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_right));
+                                playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_left));
+                            } else {
+                                playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_left));
+                                playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_right));
+                            }
+                            playModeFlipper.getInAnimation().setAnimationListener(new Animation.AnimationListener() {
+                                public void onAnimationStart(Animation animation) {
+                                }
 
-                                        public void onAnimationRepeat(Animation animation) {
-                                        }
+                                public void onAnimationRepeat(Animation animation) {
+                                }
 
-                                        public void onAnimationEnd(Animation animation) {
-                                            startNextTurn2();
-                                        }
-                                    });
-                                    playModeFlipper.setDisplayedChild(1);
-                                    mPlayerGridBtn.setPressed(false);
-                                    mPlayModeOptionsBtn.setPressed(false);
-                                    mOpponentGridBtn.setPressed(true);
-                                } else {
+                                public void onAnimationEnd(Animation animation) {
                                     startNextTurn2();
                                 }
-                            }
-                        });
+                            });
+                            playModeFlipper.setDisplayedChild(1);
+                            mPlayerGridBtn.setPressed(false);
+                            mPlayModeOptionsBtn.setPressed(false);
+                            mOpponentGridBtn.setPressed(true);
+                        } else {
+                            startNextTurn2();
+                        }
                     }
-                }, 300);
+                });
+            }
+        }, 300, TimeUnit.MILLISECONDS);
     }
 
     public void startNextTurn2() {
@@ -1471,21 +1682,25 @@ public class quickShipActivityMain extends Activity implements Runnable {
         mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
         mPlayModeScroller.smoothScrollTo(0, mPlayModeChatMessageLog.getBottom());
         mPlayModeEditTextSend.setEnabled(true);
-        endAnimation();
         reinitializeUI();
+        animating = false;
         if (!gameOver) {
+            pauseAnimation();
             turnCount++;
             playerTurnDone = false;
             opponentTurnDone = false;
         } else {
+            mPlayModeFireBtn.setBackgroundResource(R.drawable.firebutton_01);
             mPlayModeFireBtn.setText("Play Again");
             mPlayModeFireBtn.setEnabled(true);
         }
-        animating = false;
     }
 
     public void debugView(View v) {
         setContentView(R.layout.debug_animation_screen);
+        animating = false;
+        gameOver = true;
+        gameOverStatus = quickShipActivityMain.WON;
         FrameLayout debug_screen = (FrameLayout) findViewById(R.id.debug_animation_root);
         testGrid = new debugQuickShipViewPlayModeOpponentGrid(this, mGameModel);
         debug_screen.addView(testGrid);
@@ -1495,11 +1710,15 @@ public class quickShipActivityMain extends Activity implements Runnable {
     }
 
     public void debugStartAnimationBtn(View v) {
-//        Float bitmapSize = testGrid.getCellWidth();
-//        Bitmap emojiBitmap = textToBitmap("\uD83D\uDCA9", bitmapSize);
-//        startDebugAnimation(testGrid.getIndexXYCoord(testGrid.getCurrentIndex()), testGrid.getCurrentIndex(), emojiBitmap);
-        mFPSTextureView.tickStart();
-        createNewTurnMsgBitmap();
+        if (animating) {
+            animating = false;
+            mFPSTextureView.removeAllChildren();
+            mFPSTextureView.tickStop();
+        } else {
+            animating = true;
+            mFPSTextureView.tickStart();
+            startGameOverAnimation();
+        }
     }
 
     public void startDebugAnimation(final float[] slotIndex, int currentIndex, Bitmap emoji) {
@@ -1509,7 +1728,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
         }
     }
 
-    public void endAnimation() {
+    public void pauseAnimation() {
         mFPSTextureView.tickStop();
     }
 
@@ -1795,43 +2014,43 @@ public class quickShipActivityMain extends Activity implements Runnable {
     }
 
     private void createNewTurnMsgBitmap() {
-        new java.util.Timer().schedule(
-                new java.util.TimerTask() {
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        scheduler.schedule(new Runnable() {
+            @Override
+            public void run() {
+                runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 2) {
-                                    if (playModeFlipper.getDisplayedChild() == 0) {
-                                        playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_right));
-                                        playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_left));
-                                    } else {
-                                        playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_left));
-                                        playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_right));
-                                    }
-                                    playModeFlipper.getInAnimation().setAnimationListener(new Animation.AnimationListener() {
-                                        public void onAnimationStart(Animation animation) {
-                                        }
+                        if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 2) {
+                            if (playModeFlipper.getDisplayedChild() == 0) {
+                                playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_right));
+                                playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_left));
+                            } else {
+                                playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_left));
+                                playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_right));
+                            }
+                            playModeFlipper.getInAnimation().setAnimationListener(new Animation.AnimationListener() {
+                                public void onAnimationStart(Animation animation) {
+                                }
 
-                                        public void onAnimationRepeat(Animation animation) {
-                                        }
+                                public void onAnimationRepeat(Animation animation) {
+                                }
 
-                                        public void onAnimationEnd(Animation animation) {
-                                            createNewTurnMsgBitmap2();
-                                        }
-                                    });
-                                    playModeFlipper.setDisplayedChild(1);
-                                    mPlayerGridBtn.setPressed(false);
-                                    mPlayModeOptionsBtn.setPressed(false);
-                                    mOpponentGridBtn.setPressed(true);
-                                } else {
+                                public void onAnimationEnd(Animation animation) {
                                     createNewTurnMsgBitmap2();
                                 }
-                            }
-                        });
+                            });
+                            playModeFlipper.setDisplayedChild(1);
+                            mPlayerGridBtn.setPressed(false);
+                            mPlayModeOptionsBtn.setPressed(false);
+                            mOpponentGridBtn.setPressed(true);
+                        } else {
+                            createNewTurnMsgBitmap2();
+                        }
                     }
-                }, 1000);
+                });
+            }
+        }, 1000, TimeUnit.MILLISECONDS);
     }
 
     public void createNewTurnMsgBitmap2() {
@@ -1848,7 +2067,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
         textBoundPaint.setTextSize(Util.convertDpToPixel(60, this));
 
-        String tweenTxt = getResources().getString(R.string.new_turn_msg1);
+        String tweenTxt = getResources().getString(R.string.play_mode_new_turn_msg1);
 
         Rect bounds = new Rect();
         textBoundPaint.getTextBounds(tweenTxt, 0, tweenTxt.length(), bounds);
@@ -1861,7 +2080,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 .scaleRegistration(textWidth / 2, textHeight / 2);
 
         float bitmapX = (screenWidth / 2) - (textWidth / 2);
-        float bitmapY = screenWidth - (screenWidth / 1.4f);
+        //float bitmapY = screenWidth - (screenWidth / 1.4f);
+        float bitmapY = screenWidth - (screenWidth / 2f);
 
         bitmapDisplay.with(textDrawer)
                 .tween()
@@ -1880,6 +2100,99 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         mFPSTextureView.removeChild(bitmapDisplay);
                     }
                 })
+                .end();
+
+        mFPSTextureView.addChild(bitmapDisplay);
+    }
+
+    public void startGameOverAnimation() {
+        final ArrayList<Integer> emojiList = generateEmojiArray(gameOverStatus);
+        final Random randomGenerator = new Random();
+        Timer mTimer = new Timer();
+        mTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if (!gameOver) {
+                    cancel();
+                } else {
+                    for (int i = 0; i < 5; i++) {
+                        float randomStartingX = randInt(0, Math.round(screenWidth));
+                        int index = randomGenerator.nextInt(emojiList.size());
+                        String randomEmoji = getEmojiByUnicode(emojiList.get(index));
+                        spawnGameOverEmojis(randomEmoji, randomStartingX);
+                    }
+                }
+            }
+        }, 0, 200);
+        createGameOverText();
+    }
+
+    public void spawnGameOverEmojis(final String emoji, final float spawnX) {
+        Bitmap emojiBitmap = textToBitmap(emoji, mCellWidth);
+
+        final DisplayObject bitmapDisplay = new DisplayObject();
+        bitmapDisplay.with(new BitmapDrawer(emojiBitmap))
+                .parabolic()
+                .transform(spawnX, -mCellWidth)
+                .reboundBottom(false)
+                .accelerationX(8)
+                .initialVelocityY(0)
+                .bottomHitCallback(new AnimCallBack() {
+                    @Override
+                    public void call() {
+                        mFPSTextureView.removeChild(bitmapDisplay);
+                    }
+                })
+                .end();
+
+        mFPSTextureView.addChild(bitmapDisplay);
+    }
+
+    public void createGameOverText() {
+        final DisplayObject bitmapDisplay = new DisplayObject();
+
+        TextPaint textBoundPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG | Paint.LINEAR_TEXT_FLAG);
+        textBoundPaint.setStyle(Paint.Style.FILL);
+        textBoundPaint.setColor(ContextCompat.getColor(mActivityMain, R.color.play_mode_gameover_color));
+        textBoundPaint.setTextAlign(Paint.Align.LEFT);
+
+        Typeface custom_font = Typeface.createFromAsset(getAssets(), "badaboom.ttf");
+
+        textBoundPaint.setTypeface(Typeface.create(custom_font, Typeface.NORMAL));
+
+        textBoundPaint.setTextSize(Util.convertDpToPixel(60, this));
+
+        String tweenTxt = "";
+        switch (gameOverStatus) {
+            case quickShipActivityMain.WON:
+                tweenTxt = getResources().getString(R.string.play_mode_game_won);
+                break;
+            case quickShipActivityMain.LOST:
+                tweenTxt = getResources().getString(R.string.play_mode_game_lost);
+                break;
+            case quickShipActivityMain.DRAW:
+                tweenTxt = getResources().getString(R.string.play_mode_game_draw);
+                break;
+        }
+
+        Rect bounds = new Rect();
+        textBoundPaint.getTextBounds(tweenTxt, 0, tweenTxt.length(), bounds);
+
+        float textWidth = bounds.width();
+        float textHeight = bounds.height();
+
+        TextDrawer textDrawer = new TextDrawer(tweenTxt, textBoundPaint)
+                .rotateRegistration(textWidth / 2, textHeight / 2)
+                .scaleRegistration(textWidth / 2, textHeight / 2);
+
+        float bitmapX = (screenWidth / 2) - (textWidth / 2);
+        float bitmapY = screenWidth - (screenWidth / 2f);
+
+        bitmapDisplay.with(textDrawer)
+                .tween()
+                .tweenLoop(false)
+                .transform(bitmapX, 0 - bitmapY)
+                .to(600, bitmapX, bitmapY, 255, 1f, 1f, 0, Ease.SINE_IN_OUT)
                 .end();
 
         mFPSTextureView.addChild(bitmapDisplay);
@@ -2031,5 +2344,173 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
     public boolean getAnimating() {
         return animating;
+    }
+
+    public boolean getGameOver() {
+        return gameOver;
+    }
+
+    public String getEmojiByUnicode(int unicode) {
+        return new String(Character.toChars(unicode));
+    }
+
+    public ArrayList<Integer> generateEmojiArray(int gameOverStatus) {
+        ArrayList<Integer> returnArray = new ArrayList<>();
+        switch (gameOverStatus) {
+            case quickShipActivityMain.WON:
+                returnArray.add(0x1f604);
+                returnArray.add(0x1f603);
+                returnArray.add(0x1f600);
+                returnArray.add(0x1f60a);
+                returnArray.add(0x263a);
+                returnArray.add(0x1f609);
+                returnArray.add(0x1f60d);
+                returnArray.add(0x1f618);
+                returnArray.add(0x1f61a);
+                returnArray.add(0x1f617);
+                returnArray.add(0x1f61c);
+                returnArray.add(0x1f61d);
+                returnArray.add(0x1f61b);
+                returnArray.add(0x1f601);
+                returnArray.add(0x1f60e);
+                returnArray.add(0x1f63a);
+                returnArray.add(0x1f638);
+                returnArray.add(0x1f63b);
+                returnArray.add(0x1f63d);
+                returnArray.add(0x1f63c);
+                returnArray.add(0x1f44d);
+                returnArray.add(0x1f44c);
+                returnArray.add(0x1f64c);
+                returnArray.add(0x1f64f);
+                returnArray.add(0x1f4aa);
+                returnArray.add(0x1f645);
+                returnArray.add(0x1f451);
+                returnArray.add(0x2764);
+                returnArray.add(0x1f48e);
+                break;
+            case quickShipActivityMain.LOST:
+                returnArray.add(0x1f633);
+                returnArray.add(0x1f614);
+                returnArray.add(0x1f60c);
+                returnArray.add(0x1f612);
+                returnArray.add(0x1f61e);
+                returnArray.add(0x1f623);
+                returnArray.add(0x1f622);
+                returnArray.add(0x1f602);
+                returnArray.add(0x1f62d);
+                returnArray.add(0x1f62a);
+                returnArray.add(0x1f625);
+                returnArray.add(0x1f630);
+                returnArray.add(0x1f605);
+                returnArray.add(0x1f613);
+                returnArray.add(0x1f629);
+                returnArray.add(0x1f62b);
+                returnArray.add(0x1f628);
+                returnArray.add(0x1f631);
+                returnArray.add(0x1f620);
+                returnArray.add(0x1f621);
+                returnArray.add(0x1f624);
+                returnArray.add(0x1f616);
+                returnArray.add(0x1f606);
+                returnArray.add(0x1f60b);
+                returnArray.add(0x1f635);
+                returnArray.add(0x1f632);
+                returnArray.add(0x1f61f);
+                returnArray.add(0x1f626);
+                returnArray.add(0x1f627);
+                returnArray.add(0x1f62f);
+                returnArray.add(0x1f63f);
+                returnArray.add(0x1f63e);
+                returnArray.add(0x1f4a9);
+                returnArray.add(0x1f44e);
+                returnArray.add(0x1f494);
+                break;
+            case quickShipActivityMain.DRAW:
+                returnArray.add(0x1f436);
+                returnArray.add(0x1f43a);
+                returnArray.add(0x1f431);
+                returnArray.add(0x1f42d);
+                returnArray.add(0x1f439);
+                returnArray.add(0x1f430);
+                returnArray.add(0x1f438);
+                returnArray.add(0x1f42f);
+                returnArray.add(0x1f428);
+                returnArray.add(0x1f43b);
+                returnArray.add(0x1f437);
+                returnArray.add(0x1f43d);
+                returnArray.add(0x1f42e);
+                returnArray.add(0x1f417);
+                returnArray.add(0x1f435);
+                returnArray.add(0x1f412);
+                returnArray.add(0x1f434);
+                returnArray.add(0x1f411);
+                returnArray.add(0x1f418);
+                returnArray.add(0x1f43c);
+                returnArray.add(0x1f427);
+                returnArray.add(0x1f426);
+                returnArray.add(0x1f424);
+                returnArray.add(0x1f425);
+                returnArray.add(0x1f423);
+                returnArray.add(0x1f414);
+                returnArray.add(0x1f40d);
+                returnArray.add(0x1f422);
+                returnArray.add(0x1f41b);
+                returnArray.add(0x1f41d);
+                returnArray.add(0x1f41c);
+                returnArray.add(0x1f41e);
+                returnArray.add(0x1f40c);
+                returnArray.add(0x1f419);
+                returnArray.add(0x1f41a);
+                returnArray.add(0x1f420);
+                returnArray.add(0x1f41f);
+                returnArray.add(0x1f42c);
+                returnArray.add(0x1f433);
+                returnArray.add(0x1f40b);
+                returnArray.add(0x1f404);
+                returnArray.add(0x1f40f);
+                returnArray.add(0x1f400);
+                returnArray.add(0x1f403);
+                returnArray.add(0x1f405);
+                returnArray.add(0x1f407);
+                returnArray.add(0x1f409);
+                returnArray.add(0x1f40e);
+                returnArray.add(0x1f410);
+                returnArray.add(0x1f413);
+                returnArray.add(0x1f415);
+                returnArray.add(0x1f416);
+                returnArray.add(0x1f401);
+                returnArray.add(0x1f402);
+                returnArray.add(0x1f432);
+                returnArray.add(0x1f421);
+                returnArray.add(0x1f40a);
+                returnArray.add(0x1f42b);
+                returnArray.add(0x1f42a);
+                returnArray.add(0x1f406);
+                returnArray.add(0x1f408);
+                returnArray.add(0x1f429);
+                returnArray.add(0x1f43e);
+                returnArray.add(0x1f490);
+                returnArray.add(0x1f338); //invis
+                returnArray.add(0x1f337);
+                returnArray.add(0x1f340);
+                returnArray.add(0x1f339);
+                returnArray.add(0x1f33b);
+                returnArray.add(0x1f33a); //invis
+                returnArray.add(0x1f341);
+                returnArray.add(0x1f343);
+                returnArray.add(0x1f342);
+                returnArray.add(0x1f33f);
+                returnArray.add(0x1f33e);
+                returnArray.add(0x1f344);
+                returnArray.add(0x1f335);
+                returnArray.add(0x1f334);
+                returnArray.add(0x1f332);
+                returnArray.add(0x1f333);
+                returnArray.add(0x1f330);
+                returnArray.add(0x1f331);
+                returnArray.add(0x1f33c);
+                break;
+        }
+        return returnArray;
     }
 }
