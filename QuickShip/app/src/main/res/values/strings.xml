@@ -25,4 +25,6 @@
 
     <string name="hit_text">Hit!</string>
     <string name="miss_text">Miss!</string>
+
+    <string name="new_turn_msg1">New Round!</string>
 </resources>

@@ -219,8 +219,7 @@ public class quickShipViewPlayModePlayerGrid extends View {
         for (int i = 0; i < 100; i++) {
             if (mGameModel.getPlayerGameBoard().isHit(i) && mGameModel.getPlayerGameBoard().isOccupied(i)) {
                 hitXY = getIndexXYCoord(i);
-                String emoji = mMainActivity.getOpponentChosenEmoji();
-                //renderEmoji(emoji, boardGridCellWidth, hitXY[0], hitXY[1], canvas);
+                String emoji = mGameModel.getPlayerGameBoard().getSlotEmoji(i);
                 Bitmap emojiBitmap = mMainActivity.textToBitmap(emoji, boardGridCellWidth);
                 hitSquare.set(Math.round(hitXY[0]), Math.round(hitXY[1]), Math.round(hitXY[2]), Math.round(hitXY[3]));
                 canvas.drawBitmap(emojiBitmap, null, hitSquare, null);
@@ -230,32 +229,34 @@ public class quickShipViewPlayModePlayerGrid extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        int action = event.getAction();
-        switch (action) {
-            case MotionEvent.ACTION_DOWN:
-                initialX = event.getX();
-                initialY = event.getY();
-                held = true;
-                break;
-            case MotionEvent.ACTION_MOVE:
-                break;
-            case MotionEvent.ACTION_UP:
-                endX = event.getX();
-                endY = event.getY();
-                if (initialX > endX && abs(initialX - endX) > swipeThreshold) {
-                    mMainActivity.playModeSwitchToOpponentGrid(null);
-                } else if (abs(initialX - endX) > swipeThreshold) {
-                    mMainActivity.playModeSwitchToPlayerGrid(null);
-                }
-                held = false;
-                break;
-            case MotionEvent.ACTION_CANCEL:
-                break;
-            case MotionEvent.ACTION_OUTSIDE:
-                break;
-            default:
+        if (!mMainActivity.getAnimating()) {
+            int action = event.getAction();
+            switch (action) {
+                case MotionEvent.ACTION_DOWN:
+                    initialX = event.getX();
+                    initialY = event.getY();
+                    held = true;
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    break;
+                case MotionEvent.ACTION_UP:
+                    endX = event.getX();
+                    endY = event.getY();
+                    if (initialX > endX && abs(initialX - endX) > swipeThreshold) {
+                        mMainActivity.playModeSwitchToOpponentGrid(null);
+                    } else if (abs(initialX - endX) > swipeThreshold) {
+                        mMainActivity.playModeSwitchToPlayerGrid(null);
+                    }
+                    held = false;
+                    break;
+                case MotionEvent.ACTION_CANCEL:
+                    break;
+                case MotionEvent.ACTION_OUTSIDE:
+                    break;
+                default:
+            }
+            invalidate();
         }
-        invalidate();
         return true;
     }
 
