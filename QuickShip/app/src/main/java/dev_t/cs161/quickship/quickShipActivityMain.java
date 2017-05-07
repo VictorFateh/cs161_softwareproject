@@ -1,11 +1,9 @@
 package dev_t.cs161.quickship;
 
-import github.ankushsachdeva.emojicon.EmojiconEditText;
 import github.ankushsachdeva.emojicon.EmojiconGridView.OnEmojiconClickedListener;
 import github.ankushsachdeva.emojicon.EmojiconsPopup;
-import github.ankushsachdeva.emojicon.EmojiconsPopup.OnEmojiconBackspaceClickedListener;
-import github.ankushsachdeva.emojicon.EmojiconsPopup.OnSoftKeyboardOpenCloseListener;
 import github.ankushsachdeva.emojicon.emoji.Emojicon;
+
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -22,9 +20,11 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AlertDialog;
 import android.text.Html;
@@ -38,6 +38,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
@@ -51,13 +52,13 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ViewFlipper;
-import android.widget.PopupWindow.OnDismissListener;
-import android.view.View.OnClickListener;
 
 import com.daasuu.library.DisplayObject;
 import com.daasuu.library.FPSTextureView;
 import com.daasuu.library.callback.AnimCallBack;
 import com.daasuu.library.drawer.BitmapDrawer;
+import com.daasuu.library.drawer.SpriteSheetDrawer;
+import com.daasuu.library.drawer.TextDrawer;
 import com.daasuu.library.easing.Ease;
 import com.daasuu.library.util.Util;
 
@@ -69,7 +70,6 @@ import java.util.UUID;
 
 public class quickShipActivityMain extends Activity implements Runnable {
 
-    Thread thread = null;
     private Point screen = new Point();
     private quickShipActivityMain mActivityMain;
     private volatile boolean initialBoot;
@@ -92,6 +92,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
     private Button startGame;
     private FrameLayout mChooseModeFrameLayout;
     private FrameLayout mSplashScreenFrameLayout;
+    private FrameLayout mQuickShipPlayModePlayerLayout;
+    private FrameLayout mQuickShipPlayModeOpponentLayout;
     private ImageView mSelectedShip;
     private ImageView mTempSelectedShip;
     private ImageView mShipSize2;
@@ -133,14 +135,19 @@ public class quickShipActivityMain extends Activity implements Runnable {
     private EmojiconsPopup emojiPopup;
     private FPSTextureView mFPSTextureView;
     private debugQuickShipViewPlayModeOpponentGrid testGrid;
-    private Bitmap emojiBitmap;
     private Bitmap mHitText;
     private Bitmap mMissText;
-
     private int endCode;
-
     private float mCellWidth;
-
+    private int animationStage;
+    private boolean animating;
+    private boolean animateFirst;
+    private String playerUUID;
+    private String opponentUUID;
+    static final int ANIMSTAGE1 = 0;
+    static final int ANIMSTAGE2 = 1;
+    static final int ANIMSTAGE3 = 2;
+    static final int ANIMSTAGE4 = 3;
 
     private static final UUID MY_UUID_INSECURE = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
 
@@ -162,6 +169,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
         mActivityMain = this;
 
         endCode = 0;
+
+        mQuickShipPlayModePlayerLayout = (FrameLayout) findViewById(R.id.quickship_play_mode_player);
+        mQuickShipPlayModeOpponentLayout = (FrameLayout) findViewById(R.id.quickship_play_mode_opponent);
 
         mSplashScreenPlayerName = (EditText) findViewById(R.id.splash_screen_player_name);
         mPlayModeStatusText = (TextView) findViewById(R.id.play_mode_status);
@@ -186,11 +196,13 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                if (playModeFlipper.getDisplayedChild() == 1 || playModeFlipper.getDisplayedChild() == 2) {
-                    playModeSwitchToPlayerGrid(null);
-                    mOpponentGridBtn.setPressed(false);
-                    mPlayModeOptionsBtn.setPressed(false);
-                    mPlayerGridBtn.setPressed(true);
+                if (!animating) {
+                    if (playModeFlipper.getDisplayedChild() == 1 || playModeFlipper.getDisplayedChild() == 2) {
+                        playModeSwitchToPlayerGrid(null);
+                        mOpponentGridBtn.setPressed(false);
+                        mPlayModeOptionsBtn.setPressed(false);
+                        mPlayerGridBtn.setPressed(true);
+                    }
                 }
                 return true;
             }
@@ -202,11 +214,13 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 2) {
-                    playModeSwitchToOpponentGrid(null);
-                    mPlayerGridBtn.setPressed(false);
-                    mPlayModeOptionsBtn.setPressed(false);
-                    mOpponentGridBtn.setPressed(true);
+                if (!animating) {
+                    if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 2) {
+                        playModeSwitchToOpponentGrid(null);
+                        mPlayerGridBtn.setPressed(false);
+                        mPlayModeOptionsBtn.setPressed(false);
+                        mOpponentGridBtn.setPressed(true);
+                    }
                 }
                 return true;
 
@@ -218,11 +232,13 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 1) {
-                    playModeSwitchToOptions(null);
-                    mPlayerGridBtn.setPressed(false);
-                    mOpponentGridBtn.setPressed(false);
-                    mPlayModeOptionsBtn.setPressed(true);
+                if (!animating) {
+                    if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 1) {
+                        playModeSwitchToOptions(null);
+                        mPlayerGridBtn.setPressed(false);
+                        mOpponentGridBtn.setPressed(false);
+                        mPlayModeOptionsBtn.setPressed(true);
+                    }
                 }
                 return true;
             }
@@ -278,19 +294,20 @@ public class quickShipActivityMain extends Activity implements Runnable {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
                 if (event.getAction() == KeyEvent.ACTION_DOWN && event.getKeyCode() == KeyEvent.KEYCODE_ENTER) {
-                    InputMethodManager inputManager = (InputMethodManager) mActivityMain.getSystemService(mActivityMain.INPUT_METHOD_SERVICE);
-                    inputManager.hideSoftInputFromWindow(mActivityMain.getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
-                    String full_msg = getColoredSpanned(mPlayerName + ": " + mPlayModeEditTextSend.getText().toString(), "#000000");
-                    messages.append(full_msg + "<br>");
-                    mChooseModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-                    mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-                    mChooseModeScroller.smoothScrollTo(0, mChooseModeChatMessageLog.getBottom());
-                    mPlayModeScroller.smoothScrollTo(0, mPlayModeChatMessageLog.getBottom());
+                    if (!animating) {
+                        InputMethodManager inputManager = (InputMethodManager) mActivityMain.getSystemService(mActivityMain.INPUT_METHOD_SERVICE);
+                        inputManager.hideSoftInputFromWindow(mActivityMain.getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+                        String full_msg = getColoredSpanned(mPlayerName + ": " + mPlayModeEditTextSend.getText().toString(), "#000000");
+                        messages.append(full_msg + "<br>");
+                        mChooseModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
+                        mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
+                        mChooseModeScroller.smoothScrollTo(0, mChooseModeChatMessageLog.getBottom());
+                        mPlayModeScroller.smoothScrollTo(0, mPlayModeChatMessageLog.getBottom());
 
-                    quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.CHAT, full_msg);
-                    mBluetoothConnection.write(ParcelableUtil.marshall(data));
-                    mPlayModeEditTextSend.setText("");//clear message
-
+                        quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.CHAT, full_msg);
+                        mBluetoothConnection.write(ParcelableUtil.marshall(data));
+                        mPlayModeEditTextSend.setText("");//clear message
+                    }
                     return true;
                 }
                 return false;
@@ -339,6 +356,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
         topPlayerLinear.setLayoutParams(param3);
         FrameLayout topPlayerFrameBorder = (FrameLayout) findViewById(R.id.play_mode_player_top_frame_border);
         topPlayerFrameBorder.addView(new quickShipViewGridBorder(this, getResources().getColor(R.color.play_mode_player_frame_color)));
+
+        mFPSTextureView = (FPSTextureView) findViewById(R.id.animation_texture_view);
     }
 
     public void blueToothInitializeObjects() {
@@ -399,6 +418,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     return;
                 } else {
                     startBTListViewDialog();
+                    //newGame();
                 }
             }
         });
@@ -466,16 +486,15 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
     public void setPlayModeFireBtnStatus(boolean status) {
         mPlayModeFireBtn.setEnabled(status);
-        if(status == false){
+        if (status == false) {
             mPlayModeFireBtn.setBackgroundResource(R.drawable.firebutton_01_disabled);
         }
     }
 
-    public void setButtonBack(boolean on){
-        if(on == true){
+    public void setButtonBack(boolean on) {
+        if (on == true) {
             mPlayModeFireBtn.setBackgroundResource(R.drawable.firebutton_01);
-        }
-        else {
+        } else {
             mPlayModeFireBtn.setBackgroundResource(R.drawable.firebutton_01_disabled);
         }
     }
@@ -500,23 +519,15 @@ public class quickShipActivityMain extends Activity implements Runnable {
         } else {
             initialBoot = false;
         }
-        thread = new Thread(this);
-        thread.start();
+        if (animating) {
+            mFPSTextureView.tickStart();
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        boolean retry = true;
-        running = false;
-        while (retry) {
-            try {
-                thread.join();
-                retry = false;
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
+        mFPSTextureView.tickStop();
     }
 
     @Override
@@ -535,27 +546,36 @@ public class quickShipActivityMain extends Activity implements Runnable {
     }
 
     public void reinitializeUI() {
-        if (playModeFlipper.getDisplayedChild() == 0) {
-            mOpponentGridBtn.setPressed(false);
-            mPlayModeOptionsBtn.setPressed(false);
-            mPlayerGridBtn.setPressed(true);
-        } else if (playModeFlipper.getDisplayedChild() == 1) {
-            mPlayModeOptionsBtn.setPressed(false);
-            mPlayerGridBtn.setPressed(false);
-            mOpponentGridBtn.setPressed(true);
-        } else {
-            mOpponentGridBtn.setPressed(false);
-            mPlayerGridBtn.setPressed(false);
-            mPlayModeOptionsBtn.setPressed(true);
-        }
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (playModeFlipper.getDisplayedChild() == 0) {
+                    mOpponentGridBtn.setPressed(false);
+                    mPlayModeOptionsBtn.setPressed(false);
+                    mPlayerGridBtn.setPressed(true);
+                } else if (playModeFlipper.getDisplayedChild() == 1) {
+                    mPlayModeOptionsBtn.setPressed(false);
+                    mPlayerGridBtn.setPressed(false);
+                    mOpponentGridBtn.setPressed(true);
+                } else {
+                    mOpponentGridBtn.setPressed(false);
+                    mPlayerGridBtn.setPressed(false);
+                    mPlayModeOptionsBtn.setPressed(true);
+                }
+            }
+        });
     }
 
     public void newGame() {
         gameOver = false;
         turnCount = 1;
+        playerUUID = "";
+        opponentUUID = "";
         messages.setLength(0);
+        animating = false;
         playerChooseModeDone = false;
         opponentChooseModeDone = false;
+        animateFirst = false;
         playerTurnDone = false;
         opponentTurnDone = false;
         mPlayModeStatusText.setVisibility(View.INVISIBLE);
@@ -568,7 +588,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
         playModePlayerGrid.invalidate();
         mPlayModeStatusText.setText("");
         //mPlayModeFireBtn.setText("Fire!");
-        playModeFlipper.setDisplayedChild(1);
         running = true;
     }
 
@@ -585,40 +604,46 @@ public class quickShipActivityMain extends Activity implements Runnable {
     }
 
     public void playModeSwitchToPlayerGrid(View view) {
-        if (playModeFlipper.getDisplayedChild() == 1 || playModeFlipper.getDisplayedChild() == 2) {
-            playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.in_from_left));
-            playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.out_from_right));
-            playModeFlipper.setDisplayedChild(0);
-            mOpponentGridBtn.setPressed(false);
-            mPlayModeOptionsBtn.setPressed(false);
-            mPlayerGridBtn.setPressed(true);
+        if (!animating) {
+            if (playModeFlipper.getDisplayedChild() == 1 || playModeFlipper.getDisplayedChild() == 2) {
+                playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.in_from_left));
+                playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.out_from_right));
+                playModeFlipper.setDisplayedChild(0);
+                mOpponentGridBtn.setPressed(false);
+                mPlayModeOptionsBtn.setPressed(false);
+                mPlayerGridBtn.setPressed(true);
+            }
         }
     }
 
     public void playModeSwitchToOpponentGrid(View view) {
-        if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 2) {
-            if (playModeFlipper.getDisplayedChild() == 0) {
-                playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.in_from_right));
-                playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.out_from_left));
-            } else {
-                playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.in_from_left));
-                playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.out_from_right));
+        if (!animating) {
+            if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 2) {
+                if (playModeFlipper.getDisplayedChild() == 0) {
+                    playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.in_from_right));
+                    playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.out_from_left));
+                } else {
+                    playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.in_from_left));
+                    playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.out_from_right));
+                }
+                playModeFlipper.setDisplayedChild(1);
+                mPlayerGridBtn.setPressed(false);
+                mPlayModeOptionsBtn.setPressed(false);
+                mOpponentGridBtn.setPressed(true);
             }
-            playModeFlipper.setDisplayedChild(1);
-            mPlayerGridBtn.setPressed(false);
-            mPlayModeOptionsBtn.setPressed(false);
-            mOpponentGridBtn.setPressed(true);
         }
     }
 
     public void playModeSwitchToOptions(View view) {
-        if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 1) {
-            playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.in_from_right));
-            playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.out_from_left));
-            playModeFlipper.setDisplayedChild(2);
-            mPlayerGridBtn.setPressed(false);
-            mOpponentGridBtn.setPressed(false);
-            mPlayModeOptionsBtn.setPressed(true);
+        if (!animating) {
+            if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 1) {
+                playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.in_from_right));
+                playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.out_from_left));
+                playModeFlipper.setDisplayedChild(2);
+                mPlayerGridBtn.setPressed(false);
+                mOpponentGridBtn.setPressed(false);
+                mPlayModeOptionsBtn.setPressed(true);
+            }
         }
     }
 
@@ -684,8 +709,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
     }
 
     public void changePlacedShipsBitmaps() {
-        for(int i = 0; i < 100; i++){
-            if(mGameModel.getPlayerGameBoard().getShipSlotAtIndex(i).isOccupied() && mGameModel.getPlayerGameBoard().getShipSlotAtIndex(i).isAnchor()) {
+        for (int i = 0; i < 100; i++) {
+            if (mGameModel.getPlayerGameBoard().getShipSlotAtIndex(i).isOccupied() && mGameModel.getPlayerGameBoard().getShipSlotAtIndex(i).isAnchor()) {
                 quickShipModelBoardSlot currentShip = mGameModel.getPlayerGameBoard().getShipSlotAtIndex(i);
                 switch (currentShip.getShipType()) {
                     case quickShipModelBoardSlot.TWO:
@@ -732,6 +757,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
     public void checkChooseModeDone(String status) {
         if (playerChooseModeDone && opponentChooseModeDone) {
             mainScreenViewFlipper.setDisplayedChild(2);
+            cachePlayModeViews();
             reinitializeUI();
             String msg = getColoredSpanned("The game has started!", "#eda136");
             messages.append(msg + "<br>");
@@ -763,8 +789,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
         if (!gameOver) {
             emojiPopup.showAtBottom();
-        }
-        else {
+        } else {
             // Add bluetooth disconnection code here
             mainScreenViewFlipper.setDisplayedChild(0);
             mBluetoothConnection.disconnect_threads();
@@ -774,57 +799,19 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
     public void checkPlayModeTurnDone(String status) {
         if (playerTurnDone && opponentTurnDone) {
-            mGameModel.getPlayerGameBoard().setHit(opponentChosenTarget, true);
-            mGameModel.getOpponentGameBoard().setHit(playerChosenTarget, true);
-            mGameModel.getPlayerGameBoard().getShipSlotAtIndex(opponentChosenTarget).setEmoji(opponentChosenEmoji);
-            mGameModel.getOpponentGameBoard().getShipSlotAtIndex(playerChosenTarget).setEmoji(playerChosenEmoji);
-            playModeOpponentGrid.deSelectCell();
-            playModePlayerGrid.invalidate();
-            playModeOpponentGrid.invalidate();
-            String msg = getColoredSpanned("Turn: "+turnCount, "#349edb");
-            messages.append(msg + "<br>");
-            String msg2 = getColoredSpanned("-------------------------", "#349edb");
-            messages.append(msg2 + "<br>");
-            if (mGameModel.getOpponentGameBoard().getShipSlotAtIndex(playerChosenTarget).isOccupied()) {
-                String msg3 = getColoredSpanned("You hit a ship!", "#db756b");
-                messages.append(msg3 + "<br>");
-                mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-            } else {
-                String msg3 = getColoredSpanned("You missed!", "#db756b");
-                messages.append(msg3 + "<br>");
-                mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-            }
-            if (mGameModel.getPlayerGameBoard().getShipSlotAtIndex(opponentChosenTarget).isOccupied()) {
-                String msg3 = getColoredSpanned("Your opponent hit your ship!", "#db756b");
-                messages.append(msg3 + "<br>");
-                mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-            } else {
-                String msg3 = getColoredSpanned("Your opponent missed!", "#db756b");
-                messages.append(msg3 + "<br>");
-                mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-            }
-            boolean playerGameOver = mGameModel.getPlayerGameBoard().checkGameOver();
-            boolean opponentGameOver = mGameModel.getOpponentGameBoard().checkGameOver();
-            if (playerGameOver && opponentGameOver) {
-                mPlayModeStatusText.setText("Game Ended in a draw!");
-                mPlayModeStatusText.setVisibility(View.VISIBLE);
-            } else if (playerGameOver) {
-                mPlayModeStatusText.setText("You lost!");
-                mPlayModeStatusText.setVisibility(View.VISIBLE);
-            } else if (opponentGameOver) {
-                mPlayModeStatusText.setText("You Won!");
-                mPlayModeStatusText.setVisibility(View.VISIBLE);
-            }
-            if (!playerGameOver && !opponentGameOver) {
-                turnCount++;
-                playerTurnDone = false;
-                opponentTurnDone = false;
-                mPlayModeStatusText.setVisibility(View.INVISIBLE);
-            } else {
-                gameOver = true;
-                mPlayModeFireBtn.setText("Play Again");
-                mPlayModeFireBtn.setEnabled(true);
-            }
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    animating = true;
+                    animationStage = 0;
+                    mPlayModeStatusText.setVisibility(View.INVISIBLE);
+                    mPlayModeEditTextSend.setEnabled(false);
+                    playModeOpponentGrid.deSelectCell();
+                    playModeOpponentGrid.invalidate();
+                    mFPSTextureView.tickStart();
+                    nextAnimation();
+                }
+            });
         } else {
             mPlayModeFireBtn.setEnabled(false);
             if (status.equals("player")) {
@@ -836,7 +823,39 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 mPlayModeStatusText.setVisibility(View.VISIBLE);
             }
         }
-        mPlayModeScroller.smoothScrollTo(0, mPlayModeChatMessageLog.getBottom());
+    }
+
+    public void nextAnimation() {
+        switch (animationStage) {
+            case quickShipActivityMain.ANIMSTAGE1:
+                if (animateFirst) {
+                    startPlayerBoardAnimation();
+                } else {
+                    startOpponentBoardAnimation();
+                }
+                break;
+            case quickShipActivityMain.ANIMSTAGE2:
+                if (animateFirst) {
+                    startOpponentBoardAnimation();
+                } else {
+                    startPlayerBoardAnimation();
+                }
+                break;
+            case quickShipActivityMain.ANIMSTAGE3:
+                boolean playerGameOver = mGameModel.getPlayerGameBoard().checkGameOver();
+                boolean opponentGameOver = mGameModel.getOpponentGameBoard().checkGameOver();
+                if (!playerGameOver && !opponentGameOver) {
+                    createNewTurnMsgBitmap();
+                } else {
+                    gameOver = true;
+                    animationStage++;
+                    nextAnimation();
+                }
+                break;
+            case quickShipActivityMain.ANIMSTAGE4:
+                startNextTurn();
+                break;
+        }
     }
 
     public boolean isPlayerChooseModeDone() {
@@ -965,11 +984,11 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         alertDialog.setTitle("Player Has Disconnected");
                         alertDialog.setMessage("Returning to main screen.");
                         alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
-                                new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        dialog.dismiss();
-                                    }
-                                });
+                                              new DialogInterface.OnClickListener() {
+                                                  public void onClick(DialogInterface dialog, int which) {
+                                                      dialog.dismiss();
+                                                  }
+                                              });
                         alertDialog.show();
                         mainScreenViewFlipper.setDisplayedChild(0);
                         mBluetoothConnection.disconnect_threads();
@@ -1016,7 +1035,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                                 mBTDevice = mBTDevices.get(i);
                                 mBluetoothConnection = new BluetoothConnectionService(mActivityMain);
                                 startConnection();
-                            }else{
+                            } else {
                                 mBTDevices.get(i).createBond();
                             }
 
@@ -1088,16 +1107,16 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
                 // case1: bonded already
                 if (device.getBondState() == BluetoothDevice.BOND_BONDED) {
-                    Log.d("BT Bonding", "BONDED with "+device.getName());
+                    Log.d("BT Bonding", "BONDED with " + device.getName());
                     AlertDialog alertDialog = new AlertDialog.Builder(mActivityMain).create();
                     alertDialog.setTitle("Devices Successfully Paired");
                     alertDialog.setMessage("Please Reconnect");
                     alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
-                            new DialogInterface.OnClickListener() {
-                                public void onClick(DialogInterface dialog, int which) {
-                                    dialog.dismiss();
-                                }
-                            });
+                                          new DialogInterface.OnClickListener() {
+                                              public void onClick(DialogInterface dialog, int which) {
+                                                  dialog.dismiss();
+                                              }
+                                          });
                     alertDialog.show();
                     //mBTDevice = device; // device it is paired with
                     //mBluetoothConnection = new BluetoothConnectionService(mActivityMain);
@@ -1111,12 +1130,12 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 // case 2: creating a bond
                 if (device.getBondState() == BluetoothDevice.BOND_BONDING) {
                     toast_displayMessage("Pairing Devices...");
-                    Log.d("BT Bonding", "Bonding with "+device.getName());
+                    Log.d("BT Bonding", "Bonding with " + device.getName());
                 }
 
                 // case 3: disconnecting a bond
                 if (device.getBondState() == BluetoothDevice.BOND_NONE) {
-                    Log.d("BT Bonding", "Bond NONE with "+device.getName());
+                    Log.d("BT Bonding", "Bond NONE with " + device.getName());
                     /*
                     AlertDialog alertDialog = new AlertDialog.Builder(mActivityMain).create();
                     alertDialog.setTitle("Disconnect");
@@ -1199,7 +1218,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 if (Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN_MR2) {
                     toast_displayMessage("Attempting to connect with...\n" + deviceName + "\n" + deviceMAC);
 
-                    if(mBTDevices.get(i).createBond()) {
+                    if (mBTDevices.get(i).createBond()) {
                         Log.d("BT Create Bond", "True");
                         mBTDevice = mBTDevices.get(i);
                         mBluetoothConnection = new BluetoothConnectionService(mActivityMain);
@@ -1262,6 +1281,209 @@ public class quickShipActivityMain extends Activity implements Runnable {
         this.opponentChosenEmoji = opponentChosenEmoji;
     }
 
+    public void cachePlayModeViews() {
+        playModeFlipper.setDisplayedChild(0);
+        emojiPopup.showAtBottom();
+        mOpponentGridBtn.setPressed(false);
+        mPlayModeOptionsBtn.setPressed(false);
+        mPlayerGridBtn.setPressed(true);
+        new java.util.Timer().schedule(
+                new java.util.TimerTask() {
+                    @Override
+                    public void run() {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                emojiPopup.dismiss();
+                                playModeFlipper.setDisplayedChild(1);
+                                mPlayerGridBtn.setPressed(false);
+                                mPlayModeOptionsBtn.setPressed(false);
+                                mOpponentGridBtn.setPressed(true);
+                            }
+                        });
+                    }
+                }, 100);
+    }
+
+    public void startPlayerBoardAnimation() {
+
+        new java.util.Timer().schedule(
+                new java.util.TimerTask() {
+                    @Override
+                    public void run() {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (playModeFlipper.getDisplayedChild() == 1 || playModeFlipper.getDisplayedChild() == 2) {
+                                    playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_left));
+                                    playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_right));
+                                    playModeFlipper.getInAnimation().setAnimationListener(new Animation.AnimationListener() {
+                                        public void onAnimationStart(Animation animation) {
+                                        }
+
+                                        public void onAnimationRepeat(Animation animation) {
+                                        }
+
+                                        public void onAnimationEnd(Animation animation) {
+                                            startPlayerBoardAnimation2();
+                                        }
+                                    });
+                                    playModeFlipper.setDisplayedChild(0);
+                                    mOpponentGridBtn.setPressed(false);
+                                    mPlayModeOptionsBtn.setPressed(false);
+                                    mPlayerGridBtn.setPressed(true);
+                                } else {
+                                    startPlayerBoardAnimation2();
+                                }
+                            }
+                        });
+                    }
+                }, 1000);
+    }
+
+    public void startPlayerBoardAnimation2() {
+        Boolean hitStatusPlayer = mGameModel.getPlayerGameBoard().getShipSlotAtIndex(opponentChosenTarget).isOccupied();
+
+        float[] slotIndex = playModePlayerGrid.getIndexXYCoord(opponentChosenTarget);
+        if (hitStatusPlayer) {
+            Float bitmapSize = slotIndex[4];
+            Bitmap emojiBitmap = textToBitmap(opponentChosenEmoji, bitmapSize);
+            createHitRocketBitmap(slotIndex, opponentChosenTarget, emojiBitmap);
+        } else {
+            createMissRocketBitmap(slotIndex, opponentChosenTarget);
+        }
+    }
+
+    public void startOpponentBoardAnimation() {
+        new java.util.Timer().schedule(
+                new java.util.TimerTask() {
+                    @Override
+                    public void run() {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 2) {
+                                    if (playModeFlipper.getDisplayedChild() == 0) {
+                                        playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_right));
+                                        playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_left));
+                                    } else {
+                                        playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_left));
+                                        playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_right));
+                                    }
+                                    playModeFlipper.getInAnimation().setAnimationListener(new Animation.AnimationListener() {
+                                        public void onAnimationStart(Animation animation) {
+                                        }
+
+                                        public void onAnimationRepeat(Animation animation) {
+                                        }
+
+                                        public void onAnimationEnd(Animation animation) {
+                                            startOpponentBoardAnimation2();
+                                        }
+                                    });
+                                    playModeFlipper.setDisplayedChild(1);
+                                    mPlayerGridBtn.setPressed(false);
+                                    mPlayModeOptionsBtn.setPressed(false);
+                                    mOpponentGridBtn.setPressed(true);
+                                } else {
+                                    startOpponentBoardAnimation2();
+                                }
+                            }
+                        });
+                    }
+                }, 1000);
+    }
+
+    public void startOpponentBoardAnimation2() {
+        Boolean hitStatusOpponent = mGameModel.getOpponentGameBoard().getShipSlotAtIndex(playerChosenTarget).isOccupied();
+        float[] slotIndex = playModeOpponentGrid.getIndexXYCoord(playerChosenTarget);
+        if (hitStatusOpponent) {
+            Float bitmapSize = slotIndex[4];
+            Bitmap emojiBitmap = textToBitmap(playerChosenEmoji, bitmapSize);
+            createHitRocketBitmap(slotIndex, playerChosenTarget, emojiBitmap);
+        } else {
+            createMissRocketBitmap(slotIndex, playerChosenTarget);
+        }
+    }
+
+    public void startNextTurn() {
+        new java.util.Timer().schedule(
+                new java.util.TimerTask() {
+                    @Override
+                    public void run() {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 2) {
+                                    if (playModeFlipper.getDisplayedChild() == 0) {
+                                        playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_right));
+                                        playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_left));
+                                    } else {
+                                        playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_left));
+                                        playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_right));
+                                    }
+                                    playModeFlipper.getInAnimation().setAnimationListener(new Animation.AnimationListener() {
+                                        public void onAnimationStart(Animation animation) {
+                                        }
+
+                                        public void onAnimationRepeat(Animation animation) {
+                                        }
+
+                                        public void onAnimationEnd(Animation animation) {
+                                            startNextTurn2();
+                                        }
+                                    });
+                                    playModeFlipper.setDisplayedChild(1);
+                                    mPlayerGridBtn.setPressed(false);
+                                    mPlayModeOptionsBtn.setPressed(false);
+                                    mOpponentGridBtn.setPressed(true);
+                                } else {
+                                    startNextTurn2();
+                                }
+                            }
+                        });
+                    }
+                }, 300);
+    }
+
+    public void startNextTurn2() {
+        Boolean hitStatusPlayer = mGameModel.getPlayerGameBoard().getShipSlotAtIndex(opponentChosenTarget).isOccupied();
+        String msg = getColoredSpanned("Turn: " + turnCount, "#349edb");
+        messages.append(msg + "<br>");
+        String msg2 = getColoredSpanned("-------------------------", "#349edb");
+        messages.append(msg2 + "<br>");
+        if (hitStatusPlayer) {
+            String msg3 = getColoredSpanned("Your opponent hit your ship!", "#db756b");
+            messages.append(msg3 + "<br>");
+        } else {
+            String msg3 = getColoredSpanned("Your opponent missed!", "#db756b");
+            messages.append(msg3 + "<br>");
+        }
+        Boolean hitStatusOpponent = mGameModel.getOpponentGameBoard().getShipSlotAtIndex(playerChosenTarget).isOccupied();
+
+        if (hitStatusOpponent) {
+            String msg3 = getColoredSpanned("You hit a ship!", "#db756b");
+            messages.append(msg3 + "<br>");
+        } else {
+            String msg3 = getColoredSpanned("You missed!", "#db756b");
+            messages.append(msg3 + "<br>");
+        }
+        mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
+        mPlayModeScroller.smoothScrollTo(0, mPlayModeChatMessageLog.getBottom());
+        mPlayModeEditTextSend.setEnabled(true);
+        endAnimation();
+        reinitializeUI();
+        if (!gameOver) {
+            turnCount++;
+            playerTurnDone = false;
+            opponentTurnDone = false;
+        } else {
+            mPlayModeFireBtn.setText("Play Again");
+            mPlayModeFireBtn.setEnabled(true);
+        }
+        animating = false;
+    }
+
     public void debugView(View v) {
         setContentView(R.layout.debug_animation_screen);
         FrameLayout debug_screen = (FrameLayout) findViewById(R.id.debug_animation_root);
@@ -1269,40 +1491,88 @@ public class quickShipActivityMain extends Activity implements Runnable {
         debug_screen.addView(testGrid);
         FrameLayout debug_border_frame = (FrameLayout) findViewById(R.id.debug_top_frame_border);
         debug_border_frame.addView(new quickShipViewGridBorder(this, getResources().getColor(R.color.play_mode_opponent_frame_color)));
-        mFPSTextureView = (FPSTextureView) findViewById(R.id.animation_texture_view);
+        mFPSTextureView = (FPSTextureView) findViewById(R.id.animation_texture_view2);
     }
 
     public void debugStartAnimationBtn(View v) {
-        Float bitmapSize = testGrid.getCellWidth();
-        emojiBitmap = textToBitmap("\uD83D\uDCA9", bitmapSize);
-        startAnimation(testGrid.getIndexXYCoord(testGrid.getCurrentIndex()));
+//        Float bitmapSize = testGrid.getCellWidth();
+//        Bitmap emojiBitmap = textToBitmap("\uD83D\uDCA9", bitmapSize);
+//        startDebugAnimation(testGrid.getIndexXYCoord(testGrid.getCurrentIndex()), testGrid.getCurrentIndex(), emojiBitmap);
+        mFPSTextureView.tickStart();
+        createNewTurnMsgBitmap();
     }
 
-    public void startAnimation(final float[] slotIndex) {
+    public void startDebugAnimation(final float[] slotIndex, int currentIndex, Bitmap emoji) {
         if (slotIndex != null) {
             mFPSTextureView.tickStart();
-            createRocketBitmap(slotIndex);
+            createNewTurnMsgBitmap();
         }
     }
 
-    private void createRocketBitmap(final float[] slotIndex) {
+    public void endAnimation() {
+        mFPSTextureView.tickStop();
+    }
+
+    private void createMissRocketBitmap(final float[] slotIndex, int currentIndex) {
         final DisplayObject bitmapDisplay = new DisplayObject();
 
-        int rocketOrigin = randInt(0, Math.round(screenWidth));
-        //Log.d("DEBUG", "CELLWIDTH: "+mCellWidth);
-        Bitmap rocket = scaleDownDrawableImage(R.drawable.rocket_01, Math.round(mCellWidth)/2, Math.round(mCellWidth)/2);
+        int rocketOriginX = randInt(0, Math.round(screenWidth));
+        int rocketOriginY;
+        float rocketAngle;
+        float rocketX;
+        float rocketY;
+        int screenWidthQuads = Math.round(screenWidth / 4);
 
-        bitmapDisplay.with(new BitmapDrawer(rocket).scaleRegistration(rocket.getWidth() / 2, rocket.getHeight() / 2))
+        currentIndex = currentIndex / 10;
+        int yIndex = currentIndex % 10;
+        if (yIndex <= 2) {
+            rocketOriginY = Math.round(screenWidth);
+            rocketY = slotIndex[1] + ((slotIndex[3] - slotIndex[1]) / 2);
+            if (rocketOriginX < screenWidthQuads) {
+                rocketX = slotIndex[0] - ((slotIndex[2] - slotIndex[0]) / 2);
+            } else if (rocketOriginX < screenWidthQuads * 2) {
+                rocketX = slotIndex[0] - ((slotIndex[2] - slotIndex[0]) / 4);
+            } else if (rocketOriginX < screenWidthQuads * 3) {
+                rocketX = slotIndex[0];
+            } else {
+                rocketX = slotIndex[0] + ((slotIndex[2] - slotIndex[0]) / 2);
+            }
+        } else {
+            rocketOriginY = 0;
+            rocketY = slotIndex[1] - (slotIndex[3] - slotIndex[1]);
+            if (rocketOriginX < screenWidthQuads) {
+                rocketX = slotIndex[0] - ((slotIndex[2] - slotIndex[0]) / 2);
+            } else if (rocketOriginX < screenWidthQuads * 2) {
+                rocketX = slotIndex[0] - ((slotIndex[2] - slotIndex[0]) / 4);
+            } else if (rocketOriginX < screenWidthQuads * 3) {
+                rocketX = slotIndex[0];
+            } else {
+                rocketX = slotIndex[0] + ((slotIndex[2] - slotIndex[0]) / 2);
+            }
+        }
+
+        rocketAngle = getAngle(rocketOriginX, rocketOriginY, rocketX, rocketY);
+
+        Bitmap rocket = scaleDownDrawableImage(R.drawable.sheet_rocket, Math.round(mCellWidth), Math.round(mCellWidth) * 2);
+
+        SpriteSheetDrawer spriteSheetDrawer = new SpriteSheetDrawer(
+                rocket,
+                rocket.getWidth() / 2,
+                rocket.getHeight(), 2)
+                .frequency(2)
+                .spriteLoop(true).rotateRegistration(rocket.getWidth() / 4, rocket.getHeight() / 2);
+
+        bitmapDisplay.with(spriteSheetDrawer)
                 .tween()
                 .tweenLoop(false)
-                .transform(rocketOrigin, 0)
-                .to(500, slotIndex[0], slotIndex[1], 0, 1f, 1f, 0, Ease.SINE_IN_OUT)
-                .transform(slotIndex[0], slotIndex[1], Util.convertAlphaFloatToInt(1f), 1f, 1f, 0)
+                .transform(rocketOriginX, rocketOriginY, 255, 1f, 1f, rocketAngle)
+                .to(500, rocketX, rocketY, 255, 1f, 1f, rocketAngle, Ease.SINE_IN_OUT)
+                .waitTime(100)
                 .call(new AnimCallBack() {
                     @Override
                     public void call() {
+                        createMissTextBitmap(slotIndex);
                         mFPSTextureView.removeChild(bitmapDisplay);
-                        createHitTextBitmap(slotIndex);
                     }
                 })
                 .end();
@@ -1310,23 +1580,165 @@ public class quickShipActivityMain extends Activity implements Runnable {
         mFPSTextureView.addChild(bitmapDisplay);
     }
 
-    private void createHitTextBitmap(final float[] slotIndex) {
+    private void createHitRocketBitmap(final float[] slotIndex, int currentIndex, final Bitmap emoji) {
         final DisplayObject bitmapDisplay = new DisplayObject();
 
-        float initialRotate = (float) randInt(0, 360);
+        int rocketOriginX = randInt(0, Math.round(screenWidth));
+        int rocketOriginY;
+        float rocketAngle;
+        float rocketX;
+        float rocketY;
+        int screenWidthQuads = Math.round(screenWidth / 4);
+
+        currentIndex = currentIndex / 10;
+        int yIndex = currentIndex % 10;
+        if (yIndex <= 2) {
+            rocketOriginY = Math.round(screenWidth);
+            rocketY = slotIndex[1] + ((slotIndex[3] - slotIndex[1]) / 2);
+            if (rocketOriginX < screenWidthQuads) {
+                rocketX = slotIndex[0] - ((slotIndex[2] - slotIndex[0]) / 2);
+            } else if (rocketOriginX < screenWidthQuads * 2) {
+                rocketX = slotIndex[0] - ((slotIndex[2] - slotIndex[0]) / 4);
+            } else if (rocketOriginX < screenWidthQuads * 3) {
+                rocketX = slotIndex[0];
+            } else {
+                rocketX = slotIndex[0] + ((slotIndex[2] - slotIndex[0]) / 2);
+            }
+        } else {
+            rocketOriginY = 0;
+            rocketY = slotIndex[1] - (slotIndex[3] - slotIndex[1]);
+            if (rocketOriginX < screenWidthQuads) {
+                rocketX = slotIndex[0] - ((slotIndex[2] - slotIndex[0]) / 2);
+            } else if (rocketOriginX < screenWidthQuads * 2) {
+                rocketX = slotIndex[0] - ((slotIndex[2] - slotIndex[0]) / 4);
+            } else if (rocketOriginX < screenWidthQuads * 3) {
+                rocketX = slotIndex[0];
+            } else {
+                rocketX = slotIndex[0] + ((slotIndex[2] - slotIndex[0]) / 2);
+            }
+        }
+
+        rocketAngle = getAngle(rocketOriginX, rocketOriginY, rocketX, rocketY);
+
+        Bitmap rocket = scaleDownDrawableImage(R.drawable.sheet_rocket, Math.round(mCellWidth), Math.round(mCellWidth) * 2);
+
+        SpriteSheetDrawer spriteSheetDrawer = new SpriteSheetDrawer(
+                rocket,
+                rocket.getWidth() / 2,
+                rocket.getHeight(), 2)
+                .frequency(2)
+                .spriteLoop(true).rotateRegistration(rocket.getWidth() / 4, rocket.getHeight() / 2);
+
+        bitmapDisplay.with(spriteSheetDrawer)
+                .tween()
+                .tweenLoop(false)
+                .transform(rocketOriginX, rocketOriginY, 255, 1f, 1f, rocketAngle)
+                .to(500, rocketX, rocketY, 255, 1f, 1f, rocketAngle, Ease.SINE_IN_OUT)
+                .waitTime(100)
+                .call(new AnimCallBack() {
+                    @Override
+                    public void call() {
+                        createHitTextBitmap(slotIndex, emoji);
+                        mFPSTextureView.removeChild(bitmapDisplay);
+                    }
+                })
+                .end();
+
+        mFPSTextureView.addChild(bitmapDisplay);
+    }
+
+    private void createHitTextBitmap(final float[] slotIndex, final Bitmap emoji) {
+        final DisplayObject bitmapDisplay = new DisplayObject();
+
+        float bitmapX = slotIndex[0] - ((slotIndex[2] - slotIndex[0]) / 4);
+        float bitmapY = slotIndex[1] - ((slotIndex[3] - slotIndex[1]) / 4);
 
         bitmapDisplay.with(new BitmapDrawer(mHitText).scaleRegistration(mHitText.getWidth() / 2, mHitText.getHeight() / 2))
                 .tween()
                 .tweenLoop(false)
-                .transform(slotIndex[0], slotIndex[1])
-                .to(500, slotIndex[0], slotIndex[1], 0, 6f, 6f, 0, Ease.SINE_IN_OUT)
-                .waitTime(400)
-                .transform(slotIndex[0], slotIndex[1], Util.convertAlphaFloatToInt(1f), 1f, 1f, 0)
+                .transform(bitmapX, bitmapY)
+                .to(500, bitmapX, bitmapY, 0, 6f, 6f, 0, Ease.SINE_IN_OUT)
+                .waitTime(100)
+                .call(new AnimCallBack() {
+                    @Override
+                    public void call() {
+                        switch (animationStage) {
+                            case quickShipActivityMain.ANIMSTAGE1:
+                                if (animateFirst) {
+                                    refreshPlayerBoard();
+                                } else {
+                                    refreshOpponentBoard();
+                                }
+                                break;
+                            case quickShipActivityMain.ANIMSTAGE2:
+                                if (animateFirst) {
+                                    refreshOpponentBoard();
+                                } else {
+                                    refreshPlayerBoard();
+                                }
+                                break;
+                        }
+                    }
+                })
+                .waitTime(100)
+                .call(new AnimCallBack() {
+                    @Override
+                    public void call() {
+                        spawnRandomEmojis(emoji, slotIndex);
+                    }
+                })
+                .transform(bitmapX, bitmapY, Util.convertAlphaFloatToInt(1f), 1f, 1f, 0)
                 .call(new AnimCallBack() {
                     @Override
                     public void call() {
                         mFPSTextureView.removeChild(bitmapDisplay);
-                        spawnRandomEmojis(emojiBitmap, slotIndex);
+                    }
+                })
+                .end();
+
+        mFPSTextureView.addChild(bitmapDisplay);
+    }
+
+    private void createMissTextBitmap(final float[] slotIndex) {
+        final DisplayObject bitmapDisplay = new DisplayObject();
+
+        float bitmapX = slotIndex[0] - ((slotIndex[2] - slotIndex[0]) / 4);
+        float bitmapY = slotIndex[1] - ((slotIndex[3] - slotIndex[1]) / 4);
+
+        bitmapDisplay.with(new BitmapDrawer(mMissText).scaleRegistration(mMissText.getWidth() / 2, mMissText.getHeight() / 2))
+                .tween()
+                .tweenLoop(false)
+                .transform(bitmapX, bitmapY)
+                .to(500, bitmapX, bitmapY, 0, 6f, 6f, 0, Ease.SINE_IN_OUT)
+                .waitTime(100)
+                .call(new AnimCallBack() {
+                    @Override
+                    public void call() {
+                        switch (animationStage) {
+                            case quickShipActivityMain.ANIMSTAGE1:
+                                if (animateFirst) {
+                                    refreshPlayerBoard();
+                                } else {
+                                    refreshOpponentBoard();
+                                }
+                                break;
+                            case quickShipActivityMain.ANIMSTAGE2:
+                                if (animateFirst) {
+                                    refreshOpponentBoard();
+                                } else {
+                                    refreshPlayerBoard();
+                                }
+                                break;
+                        }
+                    }
+                })
+                .waitTime(1000)
+                .call(new AnimCallBack() {
+                    @Override
+                    public void call() {
+                        animationStage++;
+                        nextAnimation();
+                        mFPSTextureView.removeChild(bitmapDisplay);
                     }
                 })
                 .end();
@@ -1338,13 +1750,15 @@ public class quickShipActivityMain extends Activity implements Runnable {
         Timer mTimer = new Timer();
         mTimer.scheduleAtFixedRate(new TimerTask() {
             long t0 = System.currentTimeMillis();
+
             @Override
             public void run() {
                 if (System.currentTimeMillis() - t0 > 1 * 1000) {
                     cancel();
-                }
-                else {
-                    int randomAmount = randInt(1,3);
+                    animationStage++;
+                    nextAnimation();
+                } else {
+                    int randomAmount = randInt(2, 4);
                     for (int i = 0; i < randomAmount; i++) {
                         animateRandomEmoji(mBitmap, slotIndex);
                     }
@@ -1358,13 +1772,17 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
         float initialRotate = (float) randInt(0, 360);
 
-        bitmapDisplay.with(new BitmapDrawer(mBitmap).scaleRegistration(mBitmap.getWidth() / 2, mBitmap.getHeight() / 2).rotateRegistration(initialRotate, mBitmap.getHeight()/2))
+        BitmapDrawer bitmapDrawer = new BitmapDrawer(mBitmap)
+                .scaleRegistration(mBitmap.getWidth() / 2, mBitmap.getHeight() / 2)
+                .rotateRegistration(0, 0);
+
+        bitmapDisplay.with(bitmapDrawer)
                 .tween()
                 .tweenLoop(false)
-                .transform(slotIndex[0], slotIndex[1], Util.convertAlphaFloatToInt(1f), 1f, 1f, initialRotate)
-                .to(500, slotIndex[0], slotIndex[1], 0, 5f, 5f, initialRotate, Ease.SINE_IN_OUT)
+                .transform(slotIndex[0] + ((slotIndex[2] - slotIndex[0]) / 4), slotIndex[1] + ((slotIndex[3] - slotIndex[1]) / 4), Util.convertAlphaFloatToInt(1f), 1f, 1f, initialRotate)
+                .to(500, slotIndex[0] + ((slotIndex[2] - slotIndex[0]) / 4), slotIndex[1] + ((slotIndex[3] - slotIndex[1]) / 4), 0, 5f, 5f, initialRotate, Ease.SINE_IN_OUT)
                 .waitTime(400)
-                .transform(slotIndex[0], slotIndex[1], Util.convertAlphaFloatToInt(1f), 1f, 1f, initialRotate)
+                .transform(slotIndex[0] + ((slotIndex[2] - slotIndex[0]) / 4), slotIndex[1] + ((slotIndex[3] - slotIndex[1]) / 4), Util.convertAlphaFloatToInt(1f), 1f, 1f, initialRotate)
                 .call(new AnimCallBack() {
                     @Override
                     public void call() {
@@ -1376,18 +1794,89 @@ public class quickShipActivityMain extends Activity implements Runnable {
         mFPSTextureView.addChild(bitmapDisplay);
     }
 
-    private void createParabolicMotionBitmap(Bitmap mBitmap) {
+    private void createNewTurnMsgBitmap() {
+        new java.util.Timer().schedule(
+                new java.util.TimerTask() {
+                    @Override
+                    public void run() {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 2) {
+                                    if (playModeFlipper.getDisplayedChild() == 0) {
+                                        playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_right));
+                                        playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_left));
+                                    } else {
+                                        playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.in_from_left));
+                                        playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(mActivityMain, R.anim.out_from_right));
+                                    }
+                                    playModeFlipper.getInAnimation().setAnimationListener(new Animation.AnimationListener() {
+                                        public void onAnimationStart(Animation animation) {
+                                        }
+
+                                        public void onAnimationRepeat(Animation animation) {
+                                        }
+
+                                        public void onAnimationEnd(Animation animation) {
+                                            createNewTurnMsgBitmap2();
+                                        }
+                                    });
+                                    playModeFlipper.setDisplayedChild(1);
+                                    mPlayerGridBtn.setPressed(false);
+                                    mPlayModeOptionsBtn.setPressed(false);
+                                    mOpponentGridBtn.setPressed(true);
+                                } else {
+                                    createNewTurnMsgBitmap2();
+                                }
+                            }
+                        });
+                    }
+                }, 1000);
+    }
+
+    public void createNewTurnMsgBitmap2() {
         final DisplayObject bitmapDisplay = new DisplayObject();
 
-        bitmapDisplay.with(new BitmapDrawer(mBitmap))
-                .parabolic()
-                .transform(0, mFPSTextureView.getHeight())
-                .reboundBottom(false)
-                .accelerationX((float) (15 + Math.random() * 7))
-                .initialVelocityY((float) (-65 + Math.random() * 15))
-                .bottomHitCallback(new AnimCallBack() {
+        TextPaint textBoundPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG | Paint.LINEAR_TEXT_FLAG);
+        textBoundPaint.setStyle(Paint.Style.FILL);
+        textBoundPaint.setColor(ContextCompat.getColor(mActivityMain, R.color.play_mode_new_turn1_msg_color));
+        textBoundPaint.setTextAlign(Paint.Align.LEFT);
+
+        Typeface custom_font = Typeface.createFromAsset(getAssets(), "badaboom.ttf");
+
+        textBoundPaint.setTypeface(Typeface.create(custom_font, Typeface.NORMAL));
+
+        textBoundPaint.setTextSize(Util.convertDpToPixel(60, this));
+
+        String tweenTxt = getResources().getString(R.string.new_turn_msg1);
+
+        Rect bounds = new Rect();
+        textBoundPaint.getTextBounds(tweenTxt, 0, tweenTxt.length(), bounds);
+
+        float textWidth = bounds.width();
+        float textHeight = bounds.height();
+
+        TextDrawer textDrawer = new TextDrawer(tweenTxt, textBoundPaint)
+                .rotateRegistration(textWidth / 2, textHeight / 2)
+                .scaleRegistration(textWidth / 2, textHeight / 2);
+
+        float bitmapX = (screenWidth / 2) - (textWidth / 2);
+        float bitmapY = screenWidth - (screenWidth / 1.4f);
+
+        bitmapDisplay.with(textDrawer)
+                .tween()
+                .tweenLoop(false)
+                .transform(0 - textWidth, bitmapY)
+                .to(500, bitmapX, bitmapY, 255, 1f, 1f, 0, Ease.SINE_IN_OUT)
+                .waitTime(900)
+                .to(300, screenWidth, bitmapY, 255, 1f, 1f, 0, Ease.SINE_IN_OUT)
+                .transform(0 - textWidth, bitmapY, 0, 1f, 1f, 0)
+                .waitTime(700)
+                .call(new AnimCallBack() {
                     @Override
                     public void call() {
+                        animationStage++;
+                        nextAnimation();
                         mFPSTextureView.removeChild(bitmapDisplay);
                     }
                 })
@@ -1436,7 +1925,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
         Rect bounds = new Rect();
         textBoundPaint.getTextBounds(text, 0, text.length(), bounds);
 
-        float calculatedTextSize = (testTextSize * textWidth / bounds.width())-2;
+        float calculatedTextSize = (testTextSize * textWidth / bounds.width()) - 2;
         textBoundPaint.setTextSize(calculatedTextSize);
 
         StaticLayout mTextLayout = new StaticLayout(text, textBoundPaint, Math.round(textWidth), Layout.Alignment.ALIGN_NORMAL, 1.0f, 0.0f, false);
@@ -1460,14 +1949,11 @@ public class quickShipActivityMain extends Activity implements Runnable {
         mMissText = b;
     }
 
-    // Pick a random number
+    // Pick a random number from min to max (inclusive)
     public static int randInt(int min, int max) {
 
-        // Usually this can be a field rather than a method variable
         Random rand = new Random();
 
-        // nextInt is normally exclusive of the top value,
-        // so add 1 to make it inclusive
         int randomNum = rand.nextInt((max - min) + 1) + min;
 
         return randomNum;
@@ -1475,5 +1961,75 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
     public void setCellWidth(float cellWidth) {
         mCellWidth = cellWidth;
+    }
+
+    public float getAngle(float initialX, float initialY, float targetX, float targetY) {
+        float angle = (float) Math.toDegrees(Math.atan2(targetY - initialY, targetX - initialX));
+
+        if (angle < 0) {
+            angle += 360;
+        }
+
+        return angle;
+    }
+
+    public void ShowHideUI(Boolean status) {
+        if (status) {
+            mPlayerGridBtn.setVisibility(View.VISIBLE);
+            mOpponentGridBtn.setVisibility(View.VISIBLE);
+            mPlayModeOptionsBtn.setVisibility(View.VISIBLE);
+            mPlayModeFireBtn.setVisibility(View.VISIBLE);
+
+            mPlayerGridBtn.setEnabled(true);
+            mOpponentGridBtn.setEnabled(true);
+            mPlayModeOptionsBtn.setEnabled(true);
+            mPlayModeFireBtn.setEnabled(true);
+
+            mPlayModeScroller.setVisibility(View.VISIBLE);
+            mPlayModeChatMessageLog.setVisibility(View.VISIBLE);
+            mPlayModeEditTextSend.setVisibility(View.VISIBLE);
+        } else {
+            mPlayModeStatusText.setVisibility(View.INVISIBLE);
+
+            mPlayerGridBtn.setVisibility(View.INVISIBLE);
+            mOpponentGridBtn.setVisibility(View.INVISIBLE);
+            mPlayModeOptionsBtn.setVisibility(View.INVISIBLE);
+            mPlayModeFireBtn.setVisibility(View.INVISIBLE);
+
+            mPlayerGridBtn.setEnabled(false);
+            mOpponentGridBtn.setEnabled(false);
+            mPlayModeOptionsBtn.setEnabled(false);
+            mPlayModeFireBtn.setEnabled(false);
+
+            mPlayModeScroller.setVisibility(View.INVISIBLE);
+            mPlayModeChatMessageLog.setVisibility(View.INVISIBLE);
+            mPlayModeEditTextSend.setVisibility(View.INVISIBLE);
+        }
+    }
+
+    public void refreshPlayerBoard() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mGameModel.getPlayerGameBoard().setHit(opponentChosenTarget, true);
+                mGameModel.getPlayerGameBoard().getShipSlotAtIndex(opponentChosenTarget).setEmoji(opponentChosenEmoji);
+                playModePlayerGrid.invalidate();
+            }
+        });
+    }
+
+    public void refreshOpponentBoard() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mGameModel.getOpponentGameBoard().setHit(playerChosenTarget, true);
+                mGameModel.getOpponentGameBoard().getShipSlotAtIndex(playerChosenTarget).setEmoji(playerChosenEmoji);
+                playModeOpponentGrid.invalidate();
+            }
+        });
+    }
+
+    public boolean getAnimating() {
+        return animating;
     }
 }

@@ -281,52 +281,54 @@ public class quickShipViewPlayModeOpponentGrid extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        int action = event.getAction();
-        switch (action) {
-            case MotionEvent.ACTION_DOWN:
-                initialX = event.getX();
-                initialY = event.getY();
-                held = true;
-                break;
-            case MotionEvent.ACTION_MOVE:
-                break;
-            case MotionEvent.ACTION_UP:
-                endX = event.getX();
-                endY = event.getY();
-                if (initialX > endX && abs(initialX - endX) > swipeThreshold) {
-                    mMainActivity.playModeSwitchToOptions(null);
-                } else if (abs(initialX - endX) > swipeThreshold) {
-                    mMainActivity.playModeSwitchToPlayerGrid(null);
-                } else {
-                    if (!mMainActivity.isPlayerTurnDone()) {
-                        if (endX >= boardGridFrameStartX && endX <= boardGridFrameEndX && endY >= boardGridFrameStartY && endY <= boardGridFrameEndY && abs(endX - initialX) < 5 && abs(endY - initialY) < 5) {
-                            selectedIndex = calculateCellTouched(initialX, initialY);
-                            if (!mGameModel.getOpponentGameBoard().isHit(selectedIndex)) {
-                                if (selectedIndex != currentIndex) {
-                                    currentIndex = selectedIndex;
-                                    Log.d("debug", "Index: " + currentIndex);
-                                    calculateSelectedRect(currentIndex);
-                                    mMainActivity.setPlayModeFireBtnStatus(true);
-                                    mMainActivity.setButtonBack(true);
+        if (!mMainActivity.getAnimating()) {
+            int action = event.getAction();
+            switch (action) {
+                case MotionEvent.ACTION_DOWN:
+                    initialX = event.getX();
+                    initialY = event.getY();
+                    held = true;
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    break;
+                case MotionEvent.ACTION_UP:
+                    endX = event.getX();
+                    endY = event.getY();
+                    if (initialX > endX && abs(initialX - endX) > swipeThreshold) {
+                        mMainActivity.playModeSwitchToOptions(null);
+                    } else if (abs(initialX - endX) > swipeThreshold) {
+                        mMainActivity.playModeSwitchToPlayerGrid(null);
+                    } else {
+                        if (!mMainActivity.isPlayerTurnDone()) {
+                            if (endX >= boardGridFrameStartX && endX <= boardGridFrameEndX && endY >= boardGridFrameStartY && endY <= boardGridFrameEndY && abs(endX - initialX) < 5 && abs(endY - initialY) < 5) {
+                                selectedIndex = calculateCellTouched(initialX, initialY);
+                                if (!mGameModel.getOpponentGameBoard().isHit(selectedIndex)) {
+                                    if (selectedIndex != currentIndex) {
+                                        currentIndex = selectedIndex;
+                                        Log.d("debug", "Index: " + currentIndex);
+                                        calculateSelectedRect(currentIndex);
+                                        mMainActivity.setPlayModeFireBtnStatus(true);
+                                        mMainActivity.setButtonBack(true);
+                                    }
+                                } else {
+                                    deSelectCell();
                                 }
                             } else {
                                 deSelectCell();
                             }
-                        } else {
-                            deSelectCell();
                         }
                     }
-                }
-                held = false;
-                break;
-            case MotionEvent.ACTION_CANCEL:
-                break;
-            case MotionEvent.ACTION_OUTSIDE:
-                break;
-            default:
-        }
+                    held = false;
+                    break;
+                case MotionEvent.ACTION_CANCEL:
+                    break;
+                case MotionEvent.ACTION_OUTSIDE:
+                    break;
+                default:
+            }
 
-        invalidate();
+            invalidate();
+        }
         return true;
     }
 
