@@ -421,7 +421,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                                           // mainScreenViewFlipper.setDisplayedChild(1);
                                       }
                                   });
-            //alertDialog.show();
+            alertDialog.show();
         } else if (!btAdapter.isEnabled()) {
             startGame.setEnabled(false);
             mSplashScreenPlayerName.setVisibility(View.INVISIBLE);//em
@@ -1048,7 +1048,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
             public void run() {
                 gameOver = true;
                 debugButtons = true;
-                gameOverStatus = quickShipActivityMain.DRAW;
+                gameOverStatus = quickShipActivityMain.WON;
                 animating = true;
                 opponentAnimating = false;
                 animationStage = 2;
@@ -2123,10 +2123,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     cancel();
                 } else {
                     for (int i = 0; i < 5; i++) {
-                        float randomStartingX = randInt(0, Math.round(screenWidth));
                         int index = randomGenerator.nextInt(emojiList.size());
                         String randomEmoji = getEmojiByUnicode(emojiList.get(index));
-                        spawnGameOverEmojis(randomEmoji, randomStartingX);
+                        spawnGameOverEmojis(randomEmoji);
                     }
                 }
             }
@@ -2134,16 +2133,25 @@ public class quickShipActivityMain extends Activity implements Runnable {
         createGameOverText();
     }
 
-    public void spawnGameOverEmojis(final String emoji, final float spawnX) {
+    public void spawnGameOverEmojis(final String emoji) {
         Bitmap emojiBitmap = textToBitmap(emoji, mCellWidth);
+        float randomStartingX = randInt(0, Math.round(screenWidth));
+        int randomAccelerationX = randInt(0,1);
+        if (randomAccelerationX == 0) {
+            randomAccelerationX = -8;
+        }
+        else {
+            randomAccelerationX = 8;
+        }
+        int randomAccelerationY = randInt(0,2);
 
         final DisplayObject bitmapDisplay = new DisplayObject();
         bitmapDisplay.with(new BitmapDrawer(emojiBitmap))
                 .parabolic()
-                .transform(spawnX, -mCellWidth)
+                .transform(randomStartingX, -mCellWidth)
                 .reboundBottom(false)
-                .accelerationX(8)
-                .initialVelocityY(0)
+                .accelerationX(randomAccelerationX)
+                .initialVelocityY(randomAccelerationY)
                 .bottomHitCallback(new AnimCallBack() {
                     @Override
                     public void call() {
@@ -2365,74 +2373,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
         ArrayList<Integer> returnArray = new ArrayList<>();
         switch (gameOverStatus) {
             case quickShipActivityMain.WON:
-                returnArray.add(0x1f604);
-                returnArray.add(0x1f603);
-                returnArray.add(0x1f600);
-                returnArray.add(0x1f60a);
-                returnArray.add(0x263a);
-                returnArray.add(0x1f609);
-                returnArray.add(0x1f60d);
-                returnArray.add(0x1f618);
-                returnArray.add(0x1f61a);
-                returnArray.add(0x1f617);
-                returnArray.add(0x1f61c);
-                returnArray.add(0x1f61d);
-                returnArray.add(0x1f61b);
-                returnArray.add(0x1f601);
-                returnArray.add(0x1f60e);
-                returnArray.add(0x1f63a);
-                returnArray.add(0x1f638);
-                returnArray.add(0x1f63b);
-                returnArray.add(0x1f63d);
-                returnArray.add(0x1f63c);
-                returnArray.add(0x1f44d);
-                returnArray.add(0x1f44c);
-                returnArray.add(0x1f64c);
-                returnArray.add(0x1f64f);
-                returnArray.add(0x1f4aa);
-                returnArray.add(0x1f645);
-                returnArray.add(0x1f451);
-                returnArray.add(0x2764);
-                returnArray.add(0x1f48e);
-                break;
-            case quickShipActivityMain.LOST:
-                returnArray.add(0x1f633);
-                returnArray.add(0x1f614);
-                returnArray.add(0x1f60c);
-                returnArray.add(0x1f612);
-                returnArray.add(0x1f61e);
-                returnArray.add(0x1f623);
-                returnArray.add(0x1f622);
-                returnArray.add(0x1f602);
-                returnArray.add(0x1f62d);
-                returnArray.add(0x1f62a);
-                returnArray.add(0x1f625);
-                returnArray.add(0x1f630);
-                returnArray.add(0x1f605);
-                returnArray.add(0x1f613);
-                returnArray.add(0x1f629);
-                returnArray.add(0x1f62b);
-                returnArray.add(0x1f628);
-                returnArray.add(0x1f631);
-                returnArray.add(0x1f620);
-                returnArray.add(0x1f621);
-                returnArray.add(0x1f624);
-                returnArray.add(0x1f616);
-                returnArray.add(0x1f606);
-                returnArray.add(0x1f60b);
-                returnArray.add(0x1f635);
-                returnArray.add(0x1f632);
-                returnArray.add(0x1f61f);
-                returnArray.add(0x1f626);
-                returnArray.add(0x1f627);
-                returnArray.add(0x1f62f);
-                returnArray.add(0x1f63f);
-                returnArray.add(0x1f63e);
-                returnArray.add(0x1f4a9);
-                returnArray.add(0x1f44e);
-                returnArray.add(0x1f494);
-                break;
-            case quickShipActivityMain.DRAW:
                 returnArray.add(0x1f436);
                 returnArray.add(0x1f43a);
                 returnArray.add(0x1f431);
@@ -2497,12 +2437,12 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 returnArray.add(0x1f429);
                 returnArray.add(0x1f43e);
                 returnArray.add(0x1f490);
-                returnArray.add(0x1f338); //invis
+                returnArray.add(0x1f338); //invis ?
                 returnArray.add(0x1f337);
                 returnArray.add(0x1f340);
                 returnArray.add(0x1f339);
                 returnArray.add(0x1f33b);
-                returnArray.add(0x1f33a); //invis
+                returnArray.add(0x1f33a); //invis ?
                 returnArray.add(0x1f341);
                 returnArray.add(0x1f343);
                 returnArray.add(0x1f342);
@@ -2516,6 +2456,78 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 returnArray.add(0x1f330);
                 returnArray.add(0x1f331);
                 returnArray.add(0x1f33c);
+                break;
+            case quickShipActivityMain.LOST:
+                returnArray.add(0x1f633);
+                returnArray.add(0x1f614);
+                returnArray.add(0x1f60c);
+                returnArray.add(0x1f612);
+                returnArray.add(0x1f61e);
+                returnArray.add(0x1f623);
+                returnArray.add(0x1f622);
+                returnArray.add(0x1f602);
+                returnArray.add(0x1f62d);
+                returnArray.add(0x1f62a);
+                returnArray.add(0x1f625);
+                returnArray.add(0x1f630);
+                returnArray.add(0x1f605);
+                returnArray.add(0x1f613);
+                returnArray.add(0x1f629);
+                returnArray.add(0x1f62b);
+                returnArray.add(0x1f628);
+                returnArray.add(0x1f631);
+                returnArray.add(0x1f620);
+                returnArray.add(0x1f621);
+                returnArray.add(0x1f624);
+                returnArray.add(0x1f616);
+                returnArray.add(0x1f606);
+                returnArray.add(0x1f60b);
+                returnArray.add(0x1f635);
+                returnArray.add(0x1f632);
+                returnArray.add(0x1f61f);
+                returnArray.add(0x1f626);
+                returnArray.add(0x1f627);
+                returnArray.add(0x1f62f);
+                returnArray.add(0x1f63f);
+                returnArray.add(0x1f63e);
+                returnArray.add(0x1f4a9);
+                returnArray.add(0x1f44e);
+                returnArray.add(0x1f494);
+                returnArray.add(0x1f480);
+                returnArray.add(0x1f4a7);
+                break;
+            case quickShipActivityMain.DRAW:
+                returnArray.add(0x1f604);
+                returnArray.add(0x1f603);
+                returnArray.add(0x1f600);
+                returnArray.add(0x1f60a);
+                returnArray.add(0x263a);
+                returnArray.add(0x1f609);
+                returnArray.add(0x1f60d);
+                returnArray.add(0x1f618);
+                returnArray.add(0x1f61a);
+                returnArray.add(0x1f617);
+                returnArray.add(0x1f61c);
+                returnArray.add(0x1f61d);
+                returnArray.add(0x1f61b);
+                returnArray.add(0x1f601);
+                returnArray.add(0x1f60e);
+                returnArray.add(0x1f63a);
+                returnArray.add(0x1f638);
+                returnArray.add(0x1f63b);
+                returnArray.add(0x1f63d);
+                returnArray.add(0x1f63c);
+                returnArray.add(0x1f44d);
+                returnArray.add(0x1f44c);
+                returnArray.add(0x1f64c);
+                returnArray.add(0x1f64f);
+                returnArray.add(0x1f4aa);
+                returnArray.add(0x1f645);
+                returnArray.add(0x1f451);
+                //returnArray.add(0x2764);
+                returnArray.add(0x1f48e);
+                returnArray.add(0x1f60f);
+                returnArray.add(0x1f64b);
                 break;
         }
         return returnArray;
