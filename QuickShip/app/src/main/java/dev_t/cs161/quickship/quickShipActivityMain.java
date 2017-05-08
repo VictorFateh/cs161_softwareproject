@@ -402,7 +402,20 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
         mFPSTextureView = (FPSTextureView) findViewById(R.id.animation_texture_view);
     }
-
+    public boolean btAdapterExists(){
+        if(btAdapter != null) {
+            return true;
+        }else{
+            return false;
+        }
+    }
+    public boolean isBTon(){
+        if(btAdapter.isEnabled()){
+            return true;
+        }else{
+            return false;
+        }
+    }
     public void blueToothInitializeObjects() {
         btAdapter = BluetoothAdapter.getDefaultAdapter();
         messages = new StringBuilder();
@@ -1085,6 +1098,17 @@ public class quickShipActivityMain extends Activity implements Runnable {
     public void enableBluetooth(View button) {
         toast_displayMessage("Attempting to enable Bluetooth...");
 
+        Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+
+        IntentFilter BlueToothfilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+        registerReceiver(mBtReceiver, BlueToothfilter);
+
+        int REQUEST_ENABLE_BT = 1;
+        startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+    }
+    public void enableBluetooth() {
+        //toast_displayMessage("Attempting to enable Bluetooth...");
+        Log.d("UnitTesting","Attempting to enable Bluetooth...");
         Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
 
         IntentFilter BlueToothfilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
