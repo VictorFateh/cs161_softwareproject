@@ -71,7 +71,6 @@ import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 public class quickShipActivityMain extends Activity implements Runnable {
@@ -376,7 +375,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
         topFrame.getLayoutParams().height = Math.round(screenWidth);
         topFrame.addView(chooseModeGrid);
         FrameLayout topFrameBorder = (FrameLayout) findViewById(R.id.choose_mode_top_frame_border);
-        topFrameBorder.addView(new quickShipViewGridBorder(this, getResources().getColor(R.color.choose_mode_player_frame_color)));
+        topFrameBorder.addView(new quickShipViewGridBorder(this, ContextCompat.getColor(this, R.color.choose_mode_player_frame_color)));
         LinearLayout.LayoutParams param = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Math.round(screenWidth));
         topLinear.setLayoutParams(param);
 
@@ -385,10 +384,11 @@ public class quickShipActivityMain extends Activity implements Runnable {
         playModeOpponentGrid = new quickShipViewPlayModeOpponentGrid(this, mGameModel);
         topOpponentFrame.getLayoutParams().height = Math.round(screenWidth);
         topOpponentFrame.addView(playModeOpponentGrid);
+
         LinearLayout.LayoutParams param2 = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Math.round(screenWidth));
         topOpponentLinear.setLayoutParams(param2);
         FrameLayout topOpponentFrameBorder = (FrameLayout) findViewById(R.id.play_mode_opponent_top_frame_border);
-        topOpponentFrameBorder.addView(new quickShipViewGridBorder(this, getResources().getColor(R.color.play_mode_opponent_frame_color)));
+        topOpponentFrameBorder.addView(new quickShipViewGridBorder(this, ContextCompat.getColor(this, R.color.play_mode_opponent_frame_color)));
 
         LinearLayout topPlayerLinear = (LinearLayout) findViewById(R.id.play_mode_player_top_linear);
         FrameLayout topPlayerFrame = (FrameLayout) findViewById(R.id.play_mode_player_top_frame);
@@ -398,7 +398,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
         LinearLayout.LayoutParams param3 = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Math.round(screenWidth));
         topPlayerLinear.setLayoutParams(param3);
         FrameLayout topPlayerFrameBorder = (FrameLayout) findViewById(R.id.play_mode_player_top_frame_border);
-        topPlayerFrameBorder.addView(new quickShipViewGridBorder(this, getResources().getColor(R.color.play_mode_player_frame_color)));
+        topPlayerFrameBorder.addView(new quickShipViewGridBorder(this, ContextCompat.getColor(this, R.color.play_mode_player_frame_color)));
 
         mFPSTextureView = (FPSTextureView) findViewById(R.id.animation_texture_view);
     }
@@ -718,7 +718,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
             mShipSize5.setBackgroundColor(0);
 
             if (mSelectedShip == null || (selectedShip != null && !mSelectedShip.equals(selectedShip))) {
-                selectedShip.setBackgroundColor(getResources().getColor(R.color.choose_mode_ship_selected));
+                selectedShip.setBackgroundColor(ContextCompat.getColor(this, R.color.choose_mode_ship_selected));
                 mSelectedShip = (ImageView) selectedShip;
                 String shipTag = (String) mSelectedShip.getTag();
                 switch (shipTag) {
@@ -1736,7 +1736,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
         testGrid = new debugQuickShipViewPlayModeOpponentGrid(this, mGameModel);
         debug_screen.addView(testGrid);
         FrameLayout debug_border_frame = (FrameLayout) findViewById(R.id.debug_top_frame_border);
-        debug_border_frame.addView(new quickShipViewGridBorder(this, getResources().getColor(R.color.play_mode_opponent_frame_color)));
+        debug_border_frame.addView(new quickShipViewGridBorder(this, ContextCompat.getColor(this, R.color.play_mode_opponent_frame_color)));
         mFPSTextureView = (FPSTextureView) findViewById(R.id.animation_texture_view2);
     }
 
@@ -2238,7 +2238,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
     }
 
     public void emojiPopUpInitializer() {
-        //FrameLayout root = (FrameLayout) findViewById(R.id.root_frame);
         LinearLayout root = (LinearLayout) findViewById(R.id.play_mode_opponent_top_linear);
         emojiPopup = new EmojiconsPopup(root, this);
 

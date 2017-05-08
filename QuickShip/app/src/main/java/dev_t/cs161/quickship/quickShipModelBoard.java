@@ -1,10 +1,6 @@
 package dev_t.cs161.quickship;
 
-import android.os.Parcel;
-import android.os.Parcelable;
 import android.util.Log;
-
-import com.google.gson.Gson;
 
 import java.util.ArrayList;
 

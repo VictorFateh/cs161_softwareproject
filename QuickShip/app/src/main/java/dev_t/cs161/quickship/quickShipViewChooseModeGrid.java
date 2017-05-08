@@ -5,20 +5,15 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.support.v4.content.ContextCompat;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
-
-import java.util.ArrayList;
 
 import static java.lang.Math.abs;
 
@@ -96,7 +91,7 @@ public class quickShipViewChooseModeGrid extends View {
 
         boardGridFramePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         boardGridFramePaint.setStyle(Paint.Style.FILL);
-        boardGridFramePaint.setColor(mMainActivity.getResources().getColor(R.color.choose_mode_grid));
+        boardGridFramePaint.setColor(ContextCompat.getColor(mMainActivity, R.color.choose_mode_grid));
 
         boardGridLinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         boardGridLinePaint.setStyle(Paint.Style.STROKE);
@@ -105,11 +100,11 @@ public class quickShipViewChooseModeGrid extends View {
         DisplayMetrics dm = mMainActivity.getResources().getDisplayMetrics() ;
         boardGridLinePaintStrokeWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dpSize, dm);
         boardGridLinePaint.setStrokeWidth(boardGridLinePaintStrokeWidth);
-        boardGridLinePaint.setColor(mMainActivity.getResources().getColor(R.color.choose_mode_grid_line));
+        boardGridLinePaint.setColor(ContextCompat.getColor(mMainActivity, R.color.choose_mode_grid_line));
 
         boardGridSelectedPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         boardGridSelectedPaint.setStyle(Paint.Style.FILL);
-        boardGridSelectedPaint.setColor(mMainActivity.getResources().getColor(R.color.choose_mode_cell_selected));
+        boardGridSelectedPaint.setColor(ContextCompat.getColor(mMainActivity, R.color.choose_mode_cell_selected));
         boardGridFrameDividerX = new Float[11];
         boardGridFrameDividerY = new Float[11];
         mCurrentOrientation = quickShipModelBoardSlot.HORIZONTAL;

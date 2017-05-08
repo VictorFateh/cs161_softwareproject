@@ -2,7 +2,6 @@ package dev_t.cs161.quickship;
 
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.util.Log;
 
 public class quickShipBluetoothPacketsToBeSent implements Parcelable {
     private int packetType;

@@ -5,12 +5,9 @@ import android.content.Context;
 import android.graphics.Point;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.Display;
 import android.view.MotionEvent;
-import android.view.animation.AnimationUtils;
 import android.widget.LinearLayout;
-import android.widget.ViewFlipper;
 
 import static java.lang.Math.abs;
 

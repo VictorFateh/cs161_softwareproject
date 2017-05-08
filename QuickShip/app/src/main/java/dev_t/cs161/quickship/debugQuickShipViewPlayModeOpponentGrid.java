@@ -5,7 +5,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
-import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.support.v4.content.ContextCompat;
@@ -148,7 +147,6 @@ public class debugQuickShipViewPlayModeOpponentGrid extends View {
         float boardGridFrameHeight = boardGridFrameEndY - boardGridFrameStartY;
         boardGridCellWidth = boardGridFrameWidth / 10;
         boardGridCellHeight = boardGridFrameHeight / 10;
-
         mMainActivity.setHitText(mMainActivity.scaleDownDrawableImage(R.drawable.marker_hit, Math.round(boardGridCellHeight), Math.round(boardGridCellWidth)));
         mMainActivity.setMissText(mMainActivity.scaleDownDrawableImage(R.drawable.marker_miss, Math.round(boardGridCellHeight), Math.round(boardGridCellWidth)));
 
