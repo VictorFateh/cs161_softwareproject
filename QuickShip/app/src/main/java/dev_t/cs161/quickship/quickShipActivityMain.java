@@ -1048,7 +1048,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
             public void run() {
                 gameOver = true;
                 debugButtons = true;
-                gameOverStatus = quickShipActivityMain.WON;
+                gameOverStatus = quickShipActivityMain.DRAW;
                 animating = true;
                 opponentAnimating = false;
                 animationStage = 2;
