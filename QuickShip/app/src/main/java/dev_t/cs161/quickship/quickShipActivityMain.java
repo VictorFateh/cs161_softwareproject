@@ -986,9 +986,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         if (playerGameOver && opponentGameOver) {
                             gameOverStatus = quickShipActivityMain.DRAW;
                         } else if (playerGameOver) {
-                            gameOverStatus = quickShipActivityMain.WON;
-                        } else {
                             gameOverStatus = quickShipActivityMain.LOST;
+                        } else {
+                            gameOverStatus = quickShipActivityMain.WON;
                         }
                     }
                     animationStage++;
@@ -1566,6 +1566,13 @@ public class quickShipActivityMain extends Activity implements Runnable {
     }
 
     public void startOpponentBoardAnimation() {
+        long tempDelay;
+        if (animationStage == quickShipActivityMain.ANIMSTAGE1 && !animateFirst) {
+            tempDelay = 1200;
+        }
+        else {
+            tempDelay = 1000;
+        }
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
         scheduler.schedule(new Runnable() {
             @Override
@@ -1602,7 +1609,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     }
                 });
             }
-        }, 1000, TimeUnit.MILLISECONDS);
+        }, tempDelay, TimeUnit.MILLISECONDS);
     }
 
     public void startOpponentBoardAnimation2() {
@@ -1654,7 +1661,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     }
                 });
             }
-        }, 300, TimeUnit.MILLISECONDS);
+        }, 100, TimeUnit.MILLISECONDS);
     }
 
     public void startNextTurn2() {
