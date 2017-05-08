@@ -42,9 +42,9 @@ public class quickShipLayoutPlayModePlayer extends LinearLayout {
                 break;
             case MotionEvent.ACTION_UP:
                 finalX = touchevent.getX();
-                if (initialX > finalX && abs(initialX - finalX) > swipeThreshold) {
+                if (initialX > finalX && abs(initialX - finalX) > swipeThreshold && !mMainActivity.getFireButtonPressed()) {
                     mMainActivity.playModeSwitchToOpponentGrid(null);
-                } else if (abs(initialX - finalX) > swipeThreshold) {
+                } else if (abs(initialX - finalX) > swipeThreshold && !mMainActivity.getFireButtonPressed()) {
                     mMainActivity.playModeSwitchToPlayerGrid(null);
                 }
                 break;

@@ -287,12 +287,12 @@ public class quickShipViewPlayModeOpponentGrid extends View {
                 case MotionEvent.ACTION_UP:
                     endX = event.getX();
                     endY = event.getY();
-                    if (initialX > endX && abs(initialX - endX) > swipeThreshold) {
+                    if (initialX > endX && abs(initialX - endX) > swipeThreshold && !mMainActivity.getFireButtonPressed()) {
                         mMainActivity.playModeSwitchToOptions(null);
-                    } else if (abs(initialX - endX) > swipeThreshold) {
+                    } else if (abs(initialX - endX) > swipeThreshold && !mMainActivity.getFireButtonPressed()) {
                         mMainActivity.playModeSwitchToPlayerGrid(null);
                     } else {
-                        if (!mMainActivity.isPlayerTurnDone() && !mMainActivity.getGameOver()) {
+                        if (!mMainActivity.isPlayerTurnDone() && !mMainActivity.getGameOver() && !mMainActivity.getFireButtonPressed()) {
                             if (endX >= boardGridFrameStartX && endX <= boardGridFrameEndX && endY >= boardGridFrameStartY && endY <= boardGridFrameEndY && abs(endX - initialX) < 5 && abs(endY - initialY) < 5) {
                                 selectedIndex = calculateCellTouched(initialX, initialY);
                                 if (!mGameModel.getOpponentGameBoard().isHit(selectedIndex)) {

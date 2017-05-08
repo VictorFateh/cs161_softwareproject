@@ -238,9 +238,9 @@ public class quickShipViewPlayModePlayerGrid extends View {
                 case MotionEvent.ACTION_UP:
                     endX = event.getX();
                     endY = event.getY();
-                    if (initialX > endX && abs(initialX - endX) > swipeThreshold) {
+                    if (initialX > endX && abs(initialX - endX) > swipeThreshold && !mMainActivity.getFireButtonPressed()) {
                         mMainActivity.playModeSwitchToOpponentGrid(null);
-                    } else if (abs(initialX - endX) > swipeThreshold) {
+                    } else if (abs(initialX - endX) > swipeThreshold && !mMainActivity.getFireButtonPressed()) {
                         mMainActivity.playModeSwitchToPlayerGrid(null);
                     }
                     held = false;

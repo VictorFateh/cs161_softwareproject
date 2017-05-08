@@ -149,6 +149,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
     private boolean opponentAnimating;
     private boolean animateFirst;
     private boolean quitGamePushed;
+    private boolean leftGameDisplayedOnce;
+    private boolean fireButtonPressed;
     private String playerUUID;
     private String opponentUUID;
     static final int ANIMSTAGE1 = 0;
@@ -202,7 +204,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                if (!animating) {
+                if (!animating && !fireButtonPressed) {
                     if (playModeFlipper.getDisplayedChild() == 1 || playModeFlipper.getDisplayedChild() == 2) {
                         playModeSwitchToPlayerGrid(null);
                         mOpponentGridBtn.setPressed(false);
@@ -220,7 +222,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                if (!animating) {
+                if (!animating && !fireButtonPressed) {
                     if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 2) {
                         playModeSwitchToOpponentGrid(null);
                         mPlayerGridBtn.setPressed(false);
@@ -238,7 +240,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                if (!animating) {
+                if (!animating && !fireButtonPressed) {
                     if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 1) {
                         playModeSwitchToOptions(null);
                         mPlayerGridBtn.setPressed(false);
@@ -616,13 +618,14 @@ public class quickShipActivityMain extends Activity implements Runnable {
         gameOver = false;
         debugButtons = false;
         quitGamePushed = false;
+        leftGameDisplayedOnce = false;
+        fireButtonPressed = false;
         gameOverStatus = 3;
         turnCount = 1;
         playerUUID = UUID.randomUUID().toString();
         opponentUUID = "";
         messages.setLength(0);
-        messages.append(getResources().getString(R.string.choose_mode_chat_message_default_message));
-        appendToChat();
+        mChooseModeChatMessageLog.setText(getResources().getString(R.string.choose_mode_chat_message_default_message));
         animating = false;
         playerChooseModeDone = false;
         opponentChooseModeDone = false;
@@ -814,9 +817,10 @@ public class quickShipActivityMain extends Activity implements Runnable {
         if (playerChooseModeDone && opponentChooseModeDone) {
             quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.UUID, playerUUID);
             mBluetoothConnection.write(ParcelableUtil.marshall(data));
-            switchToPlayModeScreen(null);
+            mainScreenViewFlipper.setDisplayedChild(2);
             cachePlayModeViews();
             reinitializeUI();
+            messages.setLength(0);
             String msg = getColoredSpanned(getResources().getString(R.string.choose_mode_chat_game_started_message), "#eda136");
             messages.append(msg + getResources().getString(R.string.play_mode_break_tags_chat));
             appendToChat();
@@ -835,8 +839,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
     //Update opponent grid when user presses fire button
     public void fireOpponentBtn(View v) {
-
         if (!gameOver) {
+            fireButtonPressed = true;
             emojiPopup.showAtBottom();
         } else {
             quitGamePushed = true;
@@ -1198,10 +1202,13 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         break;
 
                     case quickShipBluetoothPacketsToBeSent.DISCONNECTED:
-                        if (gameOver && !quitGamePushed) {
+                        if (gameOver && !quitGamePushed && !leftGameDisplayedOnce) {
+                            leftGameDisplayedOnce = true;
                             mBluetoothConnection.disconnect_threads();
-                            String msg = getColoredSpanned(getResources().getString(R.string.play_mode_opponent_left_chat), "#349edb");
+                            String msg = getColoredSpanned(getResources().getString(R.string.play_mode_divider_chat), "#349edb");
                             messages.append(msg + getResources().getString(R.string.play_mode_break_tags_chat));
+                            String msg2 = getColoredSpanned(getResources().getString(R.string.play_mode_opponent_left_chat), "#349edb");
+                            messages.append(msg2 + getResources().getString(R.string.play_mode_break_tags_chat));
                             appendToChat();
                             runOnUiThread(new Runnable() {
                                 @Override
@@ -1213,17 +1220,19 @@ public class quickShipActivityMain extends Activity implements Runnable {
                             });
                         }
                         else {
-                            quitGame(null);
-                            AlertDialog alertDialog = new AlertDialog.Builder(mActivityMain).create();
-                            alertDialog.setTitle(getResources().getString(R.string.play_mode_opponent_disconnect_message_title));
-                            alertDialog.setMessage(getResources().getString(R.string.play_mode_opponent_disconnect_message));
-                            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, getResources().getString(R.string.app_name_confirmed_btn),
-                                                  new DialogInterface.OnClickListener() {
-                                                      public void onClick(DialogInterface dialog, int which) {
-                                                          dialog.dismiss();
-                                                      }
-                                                  });
-                            alertDialog.show();
+                            if (!quitGamePushed && !leftGameDisplayedOnce) {
+                                quitGame(null);
+                                AlertDialog alertDialog = new AlertDialog.Builder(mActivityMain).create();
+                                alertDialog.setTitle(getResources().getString(R.string.play_mode_opponent_disconnect_message_title));
+                                alertDialog.setMessage(getResources().getString(R.string.play_mode_opponent_disconnect_message));
+                                alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, getResources().getString(R.string.app_name_confirmed_btn),
+                                                      new DialogInterface.OnClickListener() {
+                                                          public void onClick(DialogInterface dialog, int which) {
+                                                              dialog.dismiss();
+                                                          }
+                                                      });
+                                alertDialog.show();
+                            }
                         }
                         break;
                 }
@@ -1251,7 +1260,17 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 // object and its info from the Intent.
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 if (device.getName() != null && device.getName().contains("QSBT_")) {
-                    mBTDevices.add(device);
+                    Boolean duplicate = false;
+                    for (int i = 0; i < mBTDevices.size(); i++) {
+                        String tempDeviceMac = device.getAddress();
+                        if (mBTDevices.get(i).getAddress().equals(tempDeviceMac)) {
+                            duplicate = true;
+                            break;
+                        }
+                    }
+                    if (!duplicate) {
+                        mBTDevices.add(device);
+                    }
                 }
                 Log.d("Discovered Device: ", "" + device.getName());
                 mDeviceListAdapter = new DeviceListAdapter(context, R.layout.quickship_device_adapter_view, mBTDevices);
@@ -1521,6 +1540,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
         mOpponentGridBtn.setPressed(false);
         mPlayModeOptionsBtn.setPressed(false);
         mPlayerGridBtn.setPressed(true);
+        mFPSTextureView.tickStart();
+        mFPSTextureView.removeAllChildren();
 
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
         scheduler.schedule(new Runnable() {
@@ -1534,6 +1555,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         mPlayerGridBtn.setPressed(false);
                         mPlayModeOptionsBtn.setPressed(false);
                         mOpponentGridBtn.setPressed(true);
+                        pauseAnimation();
                     }
                 });
             }
@@ -1713,26 +1735,29 @@ public class quickShipActivityMain extends Activity implements Runnable {
         mPlayModeEditTextSend.setEnabled(true);
         reinitializeUI();
         animating = false;
+        fireButtonPressed = false;
         if (!gameOver) {
             pauseAnimation();
             turnCount++;
             playerTurnDone = false;
             opponentTurnDone = false;
         } else {
-            String msg4;
+            String msg4 = getColoredSpanned(getResources().getString(R.string.play_mode_divider_chat), "#164077");
+            messages.append(msg4 + getResources().getString(R.string.play_mode_break_tags_chat));
+            String msg5;
             if (gameOverStatus == quickShipActivityMain.DRAW) {
-                msg4 = getColoredSpanned(getResources().getString(R.string.play_mode_game_draw_chat), "#164077");
+                msg5 = getColoredSpanned(getResources().getString(R.string.play_mode_game_draw_chat), "#164077");
             }
             else if (gameOverStatus == quickShipActivityMain.WON) {
-                msg4 = getColoredSpanned(getResources().getString(R.string.play_mode_game_won_chat), "#164077");
+                msg5 = getColoredSpanned(getResources().getString(R.string.play_mode_game_won_chat), "#164077");
             }
             else {
-                msg4 = getColoredSpanned(getResources().getString(R.string.play_mode_game_lost_chat), "#164077");
+                msg5 = getColoredSpanned(getResources().getString(R.string.play_mode_game_lost_chat), "#164077");
             }
-            messages.append(msg4 + getResources().getString(R.string.play_mode_break_tags_chat));
+            messages.append(msg5 + getResources().getString(R.string.play_mode_break_tags_chat));
             appendToChat();
             mPlayModeFireBtn.setBackgroundResource(R.drawable.firebutton_01);
-            mPlayModeFireBtn.setText("Play Again");
+            mPlayModeFireBtn.setText(getResources().getString(R.string.game_over_play_again_btn));
             mPlayModeFireBtn.setEnabled(true);
         }
     }
@@ -2540,5 +2565,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 mPlayModeScroller.smoothScrollTo(0, mPlayModeChatMessageLog.getBottom());
             }
         });
+    }
+
+    public boolean getFireButtonPressed() {
+        return fireButtonPressed;
     }
 }
