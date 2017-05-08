@@ -865,6 +865,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
+                        mFPSTextureView.clearAnimation();
+                        mFPSTextureView.refreshDrawableState();
                         pauseAnimation();
                         switchToSplashScreen(null);
                         mBluetoothConnection.disconnect_threads();
@@ -1555,6 +1557,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         mPlayerGridBtn.setPressed(false);
                         mPlayModeOptionsBtn.setPressed(false);
                         mOpponentGridBtn.setPressed(true);
+                        mFPSTextureView.clearAnimation();
+                        mFPSTextureView.refreshDrawableState();
                         pauseAnimation();
                     }
                 });
