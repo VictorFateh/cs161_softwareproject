@@ -97,8 +97,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
     private Button startGame;
     private FrameLayout mChooseModeFrameLayout;
     private FrameLayout mSplashScreenFrameLayout;
-    private FrameLayout mQuickShipPlayModePlayerLayout;
-    private FrameLayout mQuickShipPlayModeOpponentLayout;
     private ImageView mSelectedShip;
     private ImageView mTempSelectedShip;
     private ImageView mShipSize2;
@@ -141,7 +139,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
     private int turnCount;
     private EmojiconsPopup emojiPopup;
     private FPSTextureView mFPSTextureView;
-    private debugQuickShipViewPlayModeOpponentGrid testGrid;
     private Bitmap mHitText;
     private Bitmap mMissText;
     private int endCode;
@@ -151,6 +148,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
     private boolean animating;
     private boolean opponentAnimating;
     private boolean animateFirst;
+    private boolean quitGamePushed;
     private String playerUUID;
     private String opponentUUID;
     static final int ANIMSTAGE1 = 0;
@@ -182,9 +180,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
         mActivityMain = this;
 
         endCode = 0;
-
-        mQuickShipPlayModePlayerLayout = (FrameLayout) findViewById(R.id.quickship_play_mode_player);
-        mQuickShipPlayModeOpponentLayout = (FrameLayout) findViewById(R.id.quickship_play_mode_opponent);
 
         mSplashScreenPlayerName = (EditText) findViewById(R.id.splash_screen_player_name);
         mPlayModeStatusText = (TextView) findViewById(R.id.play_mode_status);
@@ -284,11 +279,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     InputMethodManager inputManager = (InputMethodManager) mActivityMain.getSystemService(mActivityMain.INPUT_METHOD_SERVICE);
                     inputManager.hideSoftInputFromWindow(mActivityMain.getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
                     String full_msg = getColoredSpanned(mPlayerName + ": " + mChooseModeEditTextSend.getText().toString(), "#000000");
-                    messages.append(full_msg + "<br>");
-                    mChooseModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-                    mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-                    mChooseModeScroller.smoothScrollTo(0, mChooseModeChatMessageLog.getBottom());
-                    mPlayModeScroller.smoothScrollTo(0, mPlayModeChatMessageLog.getBottom());
+                    messages.append(full_msg + getResources().getString(R.string.play_mode_break_tags_chat));
+                    appendToChat();
 
                     quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.CHAT, full_msg);
                     //Log.d("Chat Parcel Byte Size: ",""+ParcelableUtil.marshall(data).length); //debugging
@@ -309,11 +301,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         InputMethodManager inputManager = (InputMethodManager) mActivityMain.getSystemService(mActivityMain.INPUT_METHOD_SERVICE);
                         inputManager.hideSoftInputFromWindow(mActivityMain.getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
                         String full_msg = getColoredSpanned(mPlayerName + ": " + mPlayModeEditTextSend.getText().toString(), "#000000");
-                        messages.append(full_msg + "<br>");
-                        mChooseModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-                        mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-                        mChooseModeScroller.smoothScrollTo(0, mChooseModeChatMessageLog.getBottom());
-                        mPlayModeScroller.smoothScrollTo(0, mPlayModeChatMessageLog.getBottom());
+                        messages.append(full_msg + getResources().getString(R.string.play_mode_break_tags_chat));
+
+                        appendToChat();
 
                         quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.CHAT, full_msg);
                         mBluetoothConnection.write(ParcelableUtil.marshall(data));
@@ -423,9 +413,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
             startGame.setEnabled(false);
             mSplashScreenPlayerName.setVisibility(View.INVISIBLE);//em
             AlertDialog alertDialog = new AlertDialog.Builder(mActivityMain).create();
-            alertDialog.setTitle("Unsupported Game");
-            alertDialog.setMessage("Device does NOT support Bluetooth");
-            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+            alertDialog.setTitle(getResources().getString(R.string.splash_screen_no_bluetooth_error_message_title));
+            alertDialog.setMessage(getResources().getString(R.string.splash_screen_no_bluetooth_error_message));
+            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, getResources().getString(R.string.app_name_confirmed_btn),
                                   new DialogInterface.OnClickListener() {
                                       public void onClick(DialogInterface dialog, int which) {
                                           dialog.dismiss();
@@ -442,7 +432,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
             AlertDialog alertDialog = new AlertDialog.Builder(mActivityMain).create();
             alertDialog.setTitle("Bluetooth Required");
             alertDialog.setMessage(getResources().getString(R.string.splash_screen_bluetooth_alert_message));
-            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, getResources().getString(R.string.app_name_confirmed_btn),
                                   new DialogInterface.OnClickListener() {
                                       public void onClick(DialogInterface dialog, int which) {
                                           dialog.dismiss();
@@ -470,7 +460,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
             public void onClick(View v) {
                 String playerNameCheck = mSplashScreenPlayerName.getText().toString();
                 if (playerNameCheck.matches("")) {
-                    Toast.makeText(mActivityMain, "Please enter a player name", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(mActivityMain, getResources().getString(R.string.splash_screen_player_name_error_message), Toast.LENGTH_SHORT).show();
                     return;
                 } else {
                     startBTListViewDialog();
@@ -625,12 +615,14 @@ public class quickShipActivityMain extends Activity implements Runnable {
     public void newGame() {
         gameOver = false;
         debugButtons = false;
+        quitGamePushed = false;
         gameOverStatus = 3;
         turnCount = 1;
         playerUUID = UUID.randomUUID().toString();
-        ;
         opponentUUID = "";
         messages.setLength(0);
+        messages.append(getResources().getString(R.string.choose_mode_chat_message_default_message));
+        appendToChat();
         animating = false;
         playerChooseModeDone = false;
         opponentChooseModeDone = false;
@@ -656,13 +648,19 @@ public class quickShipActivityMain extends Activity implements Runnable {
     public void switchToPlayModeScreen(View view) {
         mainScreenViewFlipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.in_from_right));
         mainScreenViewFlipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.out_from_left));
-        mainScreenViewFlipper.setDisplayedChild(mainScreenViewFlipper.indexOfChild(findViewById(R.id.play_mode)));
+        mainScreenViewFlipper.setDisplayedChild(2);
     }
 
     public void switchToChooseModeScreen(View view) {
         mainScreenViewFlipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.in_from_left));
         mainScreenViewFlipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.out_from_right));
-        mainScreenViewFlipper.setDisplayedChild(mainScreenViewFlipper.indexOfChild(findViewById(R.id.choose_mode)));
+        mainScreenViewFlipper.setDisplayedChild(1);
+    }
+
+    public void switchToSplashScreen(View view) {
+        mainScreenViewFlipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.in_from_left));
+        mainScreenViewFlipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.out_from_right));
+        mainScreenViewFlipper.setDisplayedChild(0);
     }
 
     public void playModeSwitchToPlayerGrid(View view) {
@@ -799,10 +797,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
         }
     }
 
-    public void play_again_btn(View button) {
-        mainScreenViewFlipper.setDisplayedChild(2);
-    }
-
     public void doneButton(View button) {
         setChooseModeDoneBtnStatus(false);
         //String x = mGameModel.convertPlayerBoardToGSON();
@@ -820,30 +814,21 @@ public class quickShipActivityMain extends Activity implements Runnable {
         if (playerChooseModeDone && opponentChooseModeDone) {
             quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.UUID, playerUUID);
             mBluetoothConnection.write(ParcelableUtil.marshall(data));
-            mainScreenViewFlipper.setDisplayedChild(2);
+            switchToPlayModeScreen(null);
             cachePlayModeViews();
             reinitializeUI();
-            String msg = getColoredSpanned("The game has started!", "#eda136");
-            messages.append(msg + "<br>");
-            mChooseModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-            mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-            mChooseModeScroller.smoothScrollTo(0, mChooseModeChatMessageLog.getBottom());
-            mPlayModeScroller.smoothScrollTo(0, mPlayModeChatMessageLog.getBottom());
+            String msg = getColoredSpanned(getResources().getString(R.string.choose_mode_chat_game_started_message), "#eda136");
+            messages.append(msg + getResources().getString(R.string.play_mode_break_tags_chat));
+            appendToChat();
         } else {
             if (status.equals("player")) {
-                String msg = getColoredSpanned("Ships placed. Waiting for opponent to finish ship placements.", "#eda136");
-                messages.append(msg + "<br>");
-                mChooseModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-                mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-                mChooseModeScroller.smoothScrollTo(0, mChooseModeChatMessageLog.getBottom());
-                mPlayModeScroller.smoothScrollTo(0, mPlayModeChatMessageLog.getBottom());
+                String msg = getColoredSpanned(getResources().getString(R.string.choose_mode_chat_player_ready_message), "#eda136");
+                messages.append(msg + getResources().getString(R.string.play_mode_break_tags_chat));
+                appendToChat();
             } else {
-                String msg = getColoredSpanned("Your opponent has finished placing ships.", "#eda136");
-                messages.append(msg + "<br>");
-                mChooseModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-                mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-                mChooseModeScroller.smoothScrollTo(0, mChooseModeChatMessageLog.getBottom());
-                mPlayModeScroller.smoothScrollTo(0, mPlayModeChatMessageLog.getBottom());
+                String msg = getColoredSpanned(getResources().getString(R.string.choose_mode_chat_opponent_ready_message), "#eda136");
+                messages.append(msg + getResources().getString(R.string.play_mode_break_tags_chat));
+                appendToChat();
             }
         }
     }
@@ -854,6 +839,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
         if (!gameOver) {
             emojiPopup.showAtBottom();
         } else {
+            quitGamePushed = true;
             quitGame(null);
         }
     }
@@ -876,7 +862,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     @Override
                     public void run() {
                         pauseAnimation();
-                        mainScreenViewFlipper.setDisplayedChild(0);
+                        switchToSplashScreen(null);
                         mBluetoothConnection.disconnect_threads();
                     }
                 });
@@ -946,11 +932,11 @@ public class quickShipActivityMain extends Activity implements Runnable {
         } else {
             mPlayModeFireBtn.setEnabled(false);
             if (status.equals("player")) {
-                mPlayModeStatusText.setText("Waiting on opponent...");
+                mPlayModeStatusText.setText(getResources().getString(R.string.play_mode_waiting_opponent_status));
                 mPlayModeStatusText.setVisibility(View.VISIBLE);
                 mPlayModeFireBtn.setBackgroundResource(R.drawable.firebutton_02);
             } else {
-                mPlayModeStatusText.setText("Your opponent is done...");
+                mPlayModeStatusText.setText(getResources().getString(R.string.play_mode_waiting_player_status));
                 mPlayModeStatusText.setVisibility(View.VISIBLE);
             }
         }
@@ -982,7 +968,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            mPlayModeStatusText.setText("Waiting on opponent...");
+                            mPlayModeStatusText.setText(getResources().getString(R.string.play_mode_waiting_opponent_status));
                             mPlayModeStatusText.setVisibility(View.VISIBLE);
                         }
                     });
@@ -1096,7 +1082,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
     }
 
     public void enableBluetooth(View button) {
-        toast_displayMessage("Attempting to enable Bluetooth...");
+        toast_displayMessage(getResources().getString(R.string.communication_blueooth_attempt));
 
         Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
 
@@ -1160,8 +1146,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
     }
 
     private String getColoredSpanned(String text, String color) {
-        String input = "<font color=" + color + ">" + text + "</font>";
-        return input;
+        return "<font color=" + color + ">" + text + "</font>";
     }
 
     private final BroadcastReceiver quickShipDock = new BroadcastReceiver() {
@@ -1174,11 +1159,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 switch (packetType) {
                     case quickShipBluetoothPacketsToBeSent.CHAT:
                         String text = data.getChatMessage();
-                        messages.append(text + "<br>");
-                        mChooseModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-                        mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-                        mChooseModeScroller.smoothScrollTo(0, mChooseModeChatMessageLog.getBottom());
-                        mPlayModeScroller.smoothScrollTo(0, mPlayModeChatMessageLog.getBottom());
+                        messages.append(text + getResources().getString(R.string.play_mode_break_tags_chat));
+                        appendToChat();
                         break;
                     case quickShipBluetoothPacketsToBeSent.SHIPS_PLACED:
                         byte[] tempBoard = data.getBoardv2();
@@ -1216,24 +1198,41 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         break;
 
                     case quickShipBluetoothPacketsToBeSent.DISCONNECTED:
-                        quitGame(null);
-                        AlertDialog alertDialog = new AlertDialog.Builder(mActivityMain).create();
-                        alertDialog.setTitle("Player Has Disconnected");
-                        alertDialog.setMessage("Returning to main screen.");
-                        alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
-                                              new DialogInterface.OnClickListener() {
-                                                  public void onClick(DialogInterface dialog, int which) {
-                                                      dialog.dismiss();
-                                                  }
-                                              });
-                        alertDialog.show();
+                        if (gameOver && !quitGamePushed) {
+                            mBluetoothConnection.disconnect_threads();
+                            String msg = getColoredSpanned(getResources().getString(R.string.play_mode_opponent_left_chat), "#349edb");
+                            messages.append(msg + getResources().getString(R.string.play_mode_break_tags_chat));
+                            appendToChat();
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mPlayModeFireBtn.setBackgroundResource(R.drawable.firebutton_01);
+                                    mPlayModeFireBtn.setText(getResources().getString(R.string.game_over_play_again_btn));
+                                    mPlayModeFireBtn.setEnabled(true);
+                                }
+                            });
+                        }
+                        else {
+                            quitGame(null);
+                            AlertDialog alertDialog = new AlertDialog.Builder(mActivityMain).create();
+                            alertDialog.setTitle(getResources().getString(R.string.play_mode_opponent_disconnect_message_title));
+                            alertDialog.setMessage(getResources().getString(R.string.play_mode_opponent_disconnect_message));
+                            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, getResources().getString(R.string.app_name_confirmed_btn),
+                                                  new DialogInterface.OnClickListener() {
+                                                      public void onClick(DialogInterface dialog, int which) {
+                                                          dialog.dismiss();
+                                                      }
+                                                  });
+                            alertDialog.show();
+                        }
                         break;
                 }
             } else if (intent.getBooleanExtra("startGame", false)) {
                 Log.d("MainActivity ->", "startGame triggered.");
                 mBTListViewDialog.dismiss();
                 newGame();
-                mainScreenViewFlipper.setDisplayedChild(1);
+                //mainScreenViewFlipper.setDisplayedChild(1);
+                switchToChooseModeScreen(null);
                 //Notify Second Player to start Game.
                 quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.TURN_DONE, true);
                 mBluetoothConnection.write(ParcelableUtil.marshall(data));
@@ -1690,28 +1689,27 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
     public void startNextTurn2() {
         Boolean hitStatusPlayer = mGameModel.getPlayerGameBoard().getShipSlotAtIndex(opponentChosenTarget).isOccupied();
-        String msg = getColoredSpanned("Turn: " + turnCount, "#349edb");
-        messages.append(msg + "<br>");
-        String msg2 = getColoredSpanned("-------------------------", "#349edb");
-        messages.append(msg2 + "<br>");
+        String msg = getColoredSpanned(getResources().getString(R.string.play_mode_turn_chat) + turnCount, "#349edb");
+        messages.append(msg + getResources().getString(R.string.play_mode_break_tags_chat));
+        String msg2 = getColoredSpanned(getResources().getString(R.string.play_mode_divider_chat), "#349edb");
+        messages.append(msg2 + getResources().getString(R.string.play_mode_break_tags_chat));
         if (hitStatusPlayer) {
-            String msg3 = getColoredSpanned("Your opponent hit your ship!", "#db756b");
-            messages.append(msg3 + "<br>");
+            String msg3 = getColoredSpanned(getResources().getString(R.string.play_mode_opponent_hit_chat), "#db756b");
+            messages.append(msg3 + getResources().getString(R.string.play_mode_break_tags_chat));
         } else {
-            String msg3 = getColoredSpanned("Your opponent missed!", "#db756b");
-            messages.append(msg3 + "<br>");
+            String msg3 = getColoredSpanned(getResources().getString(R.string.play_mode_opponent_hit_chat), "#db756b");
+            messages.append(msg3 + getResources().getString(R.string.play_mode_break_tags_chat));
         }
         Boolean hitStatusOpponent = mGameModel.getOpponentGameBoard().getShipSlotAtIndex(playerChosenTarget).isOccupied();
 
         if (hitStatusOpponent) {
-            String msg3 = getColoredSpanned("You hit a ship!", "#db756b");
-            messages.append(msg3 + "<br>");
+            String msg3 = getColoredSpanned(getResources().getString(R.string.play_mode_player_hit_chat), "#db756b");
+            messages.append(msg3 + getResources().getString(R.string.play_mode_break_tags_chat));
         } else {
-            String msg3 = getColoredSpanned("You missed!", "#db756b");
-            messages.append(msg3 + "<br>");
+            String msg3 = getColoredSpanned(getResources().getString(R.string.play_mode_player_miss_chat), "#db756b");
+            messages.append(msg3 + getResources().getString(R.string.play_mode_break_tags_chat));
         }
-        mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
-        mPlayModeScroller.smoothScrollTo(0, mPlayModeChatMessageLog.getBottom());
+        appendToChat();
         mPlayModeEditTextSend.setEnabled(true);
         reinitializeUI();
         animating = false;
@@ -1721,6 +1719,18 @@ public class quickShipActivityMain extends Activity implements Runnable {
             playerTurnDone = false;
             opponentTurnDone = false;
         } else {
+            String msg4;
+            if (gameOverStatus == quickShipActivityMain.DRAW) {
+                msg4 = getColoredSpanned(getResources().getString(R.string.play_mode_game_draw_chat), "#164077");
+            }
+            else if (gameOverStatus == quickShipActivityMain.WON) {
+                msg4 = getColoredSpanned(getResources().getString(R.string.play_mode_game_won_chat), "#164077");
+            }
+            else {
+                msg4 = getColoredSpanned(getResources().getString(R.string.play_mode_game_lost_chat), "#164077");
+            }
+            messages.append(msg4 + getResources().getString(R.string.play_mode_break_tags_chat));
+            appendToChat();
             mPlayModeFireBtn.setBackgroundResource(R.drawable.firebutton_01);
             mPlayModeFireBtn.setText("Play Again");
             mPlayModeFireBtn.setEnabled(true);
@@ -1733,7 +1743,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
         gameOver = true;
         gameOverStatus = quickShipActivityMain.WON;
         FrameLayout debug_screen = (FrameLayout) findViewById(R.id.debug_animation_root);
-        testGrid = new debugQuickShipViewPlayModeOpponentGrid(this, mGameModel);
+        debugQuickShipViewPlayModeOpponentGrid testGrid = new debugQuickShipViewPlayModeOpponentGrid(this, mGameModel);
         debug_screen.addView(testGrid);
         FrameLayout debug_border_frame = (FrameLayout) findViewById(R.id.debug_top_frame_border);
         debug_border_frame.addView(new quickShipViewGridBorder(this, ContextCompat.getColor(this, R.color.play_mode_opponent_frame_color)));
@@ -1749,13 +1759,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
             animating = true;
             mFPSTextureView.tickStart();
             startGameOverAnimation();
-        }
-    }
-
-    public void startDebugAnimation(final float[] slotIndex, int currentIndex, Bitmap emoji) {
-        if (slotIndex != null) {
-            mFPSTextureView.tickStart();
-            createNewTurnMsgBitmap();
         }
     }
 
@@ -2003,7 +2006,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
             @Override
             public void run() {
-                if (System.currentTimeMillis() - t0 > 1 * 1000) {
+                // How long the explosion last for, ie. change to "System.currentTimeMillis() - t0 > 4000"
+                // to make it last for 4 seconds
+                if (System.currentTimeMillis() - t0 > 1000) {
                     cancel();
                     animationStage++;
                     nextAnimation();
@@ -2305,9 +2310,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
         Random rand = new Random();
 
-        int randomNum = rand.nextInt((max - min) + 1) + min;
-
-        return randomNum;
+        return rand.nextInt((max - min) + 1) + min;
     }
 
     public void setCellWidth(float cellWidth) {
@@ -2322,40 +2325,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
         }
 
         return angle;
-    }
-
-    public void ShowHideUI(Boolean status) {
-        if (status) {
-            mPlayerGridBtn.setVisibility(View.VISIBLE);
-            mOpponentGridBtn.setVisibility(View.VISIBLE);
-            mPlayModeOptionsBtn.setVisibility(View.VISIBLE);
-            mPlayModeFireBtn.setVisibility(View.VISIBLE);
-
-            mPlayerGridBtn.setEnabled(true);
-            mOpponentGridBtn.setEnabled(true);
-            mPlayModeOptionsBtn.setEnabled(true);
-            mPlayModeFireBtn.setEnabled(true);
-
-            mPlayModeScroller.setVisibility(View.VISIBLE);
-            mPlayModeChatMessageLog.setVisibility(View.VISIBLE);
-            mPlayModeEditTextSend.setVisibility(View.VISIBLE);
-        } else {
-            mPlayModeStatusText.setVisibility(View.INVISIBLE);
-
-            mPlayerGridBtn.setVisibility(View.INVISIBLE);
-            mOpponentGridBtn.setVisibility(View.INVISIBLE);
-            mPlayModeOptionsBtn.setVisibility(View.INVISIBLE);
-            mPlayModeFireBtn.setVisibility(View.INVISIBLE);
-
-            mPlayerGridBtn.setEnabled(false);
-            mOpponentGridBtn.setEnabled(false);
-            mPlayModeOptionsBtn.setEnabled(false);
-            mPlayModeFireBtn.setEnabled(false);
-
-            mPlayModeScroller.setVisibility(View.INVISIBLE);
-            mPlayModeChatMessageLog.setVisibility(View.INVISIBLE);
-            mPlayModeEditTextSend.setVisibility(View.INVISIBLE);
-        }
     }
 
     public void refreshPlayerBoard() {
@@ -2554,5 +2523,22 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 break;
         }
         return returnArray;
+    }
+
+    public void appendToChat() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                    mChooseModeChatMessageLog.setText(Html.fromHtml(messages.toString(), Html.FROM_HTML_MODE_LEGACY));
+                    mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString(), Html.FROM_HTML_MODE_LEGACY));
+                } else {
+                    mChooseModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
+                    mPlayModeChatMessageLog.setText(Html.fromHtml(messages.toString()));
+                }
+                mChooseModeScroller.smoothScrollTo(0, mChooseModeChatMessageLog.getBottom());
+                mPlayModeScroller.smoothScrollTo(0, mPlayModeChatMessageLog.getBottom());
+            }
+        });
     }
 }

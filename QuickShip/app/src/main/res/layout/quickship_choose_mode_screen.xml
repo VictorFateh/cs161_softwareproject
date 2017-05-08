@@ -231,7 +231,7 @@
                                         android:background="@color/choose_mode_chat_box"
                                         android:padding="5dp"
 
-                                        android:text="Welcome to QuickShip, Commander!"
+                                        android:text="@string/choose_mode_chat_message_default_message"
                                         android:textColor="@color/choose_mode_choose_ship_title"/>
                                 </ScrollView>
                             </LinearLayout>
