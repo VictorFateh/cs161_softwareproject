@@ -80,6 +80,7 @@ public class quickShipViewChooseModeGrid extends View {
 
     public void initializeValues() {
         mTitle = getContext().getResources().getString(R.string.choose_mode_grid_title);
+
         held = false;
         held2 = false;
         currentIndex = -1;
@@ -247,6 +248,10 @@ public class quickShipViewChooseModeGrid extends View {
                         else {
                             selectedIndex = -1;
                         }
+                    }
+                    else if (endX >= mTitleX && endX <= mTitleX+mTitleWidth && endY >= mTitleY && endY <= mTitleY+mTitleHeight) {
+                        // Disable this in production
+                        debugQuickPlaceShip();
                     }
                 }
                 held2 = false;
@@ -715,6 +720,16 @@ public class quickShipViewChooseModeGrid extends View {
         mTempShipSpot.setVisibility(View.INVISIBLE);
     }
 
+    public void debugQuickPlaceShip() {
+        mMainActivity.newGame();
+        mGameModel.getPlayerGameBoard().addShip(0, quickShipModelBoardSlot.TWO, quickShipModelBoardSlot.HORIZONTAL);
+        mGameModel.getPlayerGameBoard().addShip(10, quickShipModelBoardSlot.THREE_A, quickShipModelBoardSlot.HORIZONTAL);
+        mGameModel.getPlayerGameBoard().addShip(20, quickShipModelBoardSlot.THREE_B, quickShipModelBoardSlot.HORIZONTAL);
+        mGameModel.getPlayerGameBoard().addShip(30, quickShipModelBoardSlot.FOUR, quickShipModelBoardSlot.HORIZONTAL);
+        mGameModel.getPlayerGameBoard().addShip(40, quickShipModelBoardSlot.FIVE, quickShipModelBoardSlot.HORIZONTAL);
+        currentIndex = -1;
+        deSelectShip();
+    }
 
     public static boolean isBetween(float x, float lower, float upper) {
         return lower <= x && x < upper;

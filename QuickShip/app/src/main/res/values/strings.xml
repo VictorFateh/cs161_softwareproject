@@ -56,6 +56,7 @@
     <string name="miss_text">Miss!</string>
 
     <string name="options_title">Options</string>
+    <string name="options_surrender_btn">Surrender</string>
     <string name="options_quit_btn">Quit</string>
     <string name="options_enable_animation_text">Enable Emoji Animations</string>
 

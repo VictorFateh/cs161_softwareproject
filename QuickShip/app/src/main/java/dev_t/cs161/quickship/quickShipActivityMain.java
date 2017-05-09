@@ -393,6 +393,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
         topPlayerFrameBorder.addView(new quickShipViewGridBorder(this, ContextCompat.getColor(this, R.color.play_mode_player_frame_color)));
 
         mFPSTextureView = (FPSTextureView) findViewById(R.id.animation_texture_view);
+
+        animateFirst = null;
     }
     public boolean btAdapterExists(){
         if(btAdapter != null) {
@@ -620,10 +622,11 @@ public class quickShipActivityMain extends Activity implements Runnable {
         quitGamePushed = false;
         leftGameDisplayedOnce = false;
         fireButtonPressed = false;
-        animateFirst = null;
         gameOverStatus = 3;
         turnCount = 1;
-        playerUUID = UUID.randomUUID().toString();
+        if (animateFirst == null) {
+            playerUUID = UUID.randomUUID().toString();
+        }
         opponentUUID = "";
         messages.setLength(0);
         mChooseModeChatMessageLog.setText(getResources().getString(R.string.choose_mode_chat_message_default_message));
@@ -859,7 +862,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
         opponentChooseModeDone = false;
         playerTurnDone = false;
         opponentTurnDone = false;
-        animateFirst = null;
 
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
@@ -893,7 +895,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
         opponentChooseModeDone = false;
         playerTurnDone = false;
         opponentTurnDone = false;
-        animateFirst = null;
 
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
@@ -937,8 +938,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
         } else {
             animateFirst = false;
         }
-        Log.d("DEBUGUUID", "playerUUID: "+playerUUID+", opponentUUID: "+opponentUUID);
-        Log.d("DEBUGUUID", "(tempPlayerUUID.compareTo(tempOpponentUUID) = "+tempPlayerUUID.compareTo(tempOpponentUUID));
+        //Log.d("DEBUGUUID", "playerUUID: "+playerUUID+", opponentUUID: "+opponentUUID);
+        //Log.d("DEBUGUUID", "(tempPlayerUUID.compareTo(tempOpponentUUID) = "+tempPlayerUUID.compareTo(tempOpponentUUID));
     }
 
     public void checkPlayModeTurnDone(String status) {
@@ -990,9 +991,27 @@ public class quickShipActivityMain extends Activity implements Runnable {
         }
     }
 
+    public void animationReset() {
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        scheduler.schedule(new Runnable() {
+            @Override
+            public void run() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mFPSTextureView.removeAllChildren();
+                        mFPSTextureView.clearAnimation();
+                        mFPSTextureView.refreshDrawableState();
+                    }
+                });
+            }
+        }, 100, TimeUnit.MILLISECONDS);
+    }
+
     public void nextAnimation() {
         switch (animationStage) {
             case quickShipActivityMain.ANIMSTAGE1:
+                animationReset();
                 if (animateFirst) {
                     startPlayerBoardAnimation();
                 } else {
@@ -1000,6 +1019,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 }
                 break;
             case quickShipActivityMain.ANIMSTAGE2:
+                animationReset();
                 if (animateFirst) {
                     startOpponentBoardAnimation();
                 } else {
@@ -1007,6 +1027,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 }
                 break;
             case quickShipActivityMain.ANIMSTAGE3:
+                animationReset();
                 quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.ANIMATIONDONE, true);
                 mBluetoothConnection.write(ParcelableUtil.marshall(data));
                 if (!opponentAnimating) {
@@ -1023,6 +1044,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 }
                 break;
             case quickShipActivityMain.ANIMSTAGE4:
+                animationReset();
                 boolean playerGameOver = mGameModel.getPlayerGameBoard().checkGameOver();
                 boolean opponentGameOver = mGameModel.getOpponentGameBoard().checkGameOver();
                 if (!debugButtons && !playerGameOver && !opponentGameOver) {
@@ -1049,64 +1071,76 @@ public class quickShipActivityMain extends Activity implements Runnable {
         }
     }
 
-    public void debugWinGame(View v) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                gameOver = true;
-                debugButtons = true;
-                gameOverStatus = quickShipActivityMain.WON;
-                animating = true;
-                opponentAnimating = false;
-                animationStage = 2;
-                mPlayModeStatusText.setVisibility(View.INVISIBLE);
-                mPlayModeEditTextSend.setEnabled(false);
-                playModeOpponentGrid.deSelectCell();
-                playModeOpponentGrid.invalidate();
-                mFPSTextureView.tickStart();
-                nextAnimation();
-            }
-        });
+    public void winGame(View v) {
+        if (!gameOver) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.GAME_LOST, true);
+                    mBluetoothConnection.write(ParcelableUtil.marshall(data));
+                    gameOver = true;
+                    debugButtons = true;
+                    gameOverStatus = quickShipActivityMain.WON;
+                    animating = true;
+                    opponentAnimating = false;
+                    animationStage = 2;
+                    mPlayModeStatusText.setVisibility(View.INVISIBLE);
+                    mPlayModeEditTextSend.setEnabled(false);
+                    playModeOpponentGrid.deSelectCell();
+                    playModeOpponentGrid.invalidate();
+                    mFPSTextureView.tickStart();
+                    nextAnimation();
+                }
+            });
+        }
     }
 
-    public void debugLoseGame(View v) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                gameOver = true;
-                debugButtons = true;
-                gameOverStatus = quickShipActivityMain.LOST;
-                animating = true;
-                opponentAnimating = false;
-                animationStage = 2;
-                mPlayModeStatusText.setVisibility(View.INVISIBLE);
-                mPlayModeEditTextSend.setEnabled(false);
-                playModeOpponentGrid.deSelectCell();
-                playModeOpponentGrid.invalidate();
-                mFPSTextureView.tickStart();
-                nextAnimation();
-            }
-        });
+    public void loseGame(View v) {
+        if (!gameOver) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.GAME_WON, true);
+                    mBluetoothConnection.write(ParcelableUtil.marshall(data));
+                    gameOver = true;
+                    debugButtons = true;
+                    gameOverStatus = quickShipActivityMain.LOST;
+                    animating = true;
+                    opponentAnimating = false;
+                    animationStage = 2;
+                    mPlayModeStatusText.setVisibility(View.INVISIBLE);
+                    mPlayModeEditTextSend.setEnabled(false);
+                    playModeOpponentGrid.deSelectCell();
+                    playModeOpponentGrid.invalidate();
+                    mFPSTextureView.tickStart();
+                    nextAnimation();
+                }
+            });
+        }
     }
 
-    public void debugDrawGame(View v) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                gameOver = true;
-                debugButtons = true;
-                gameOverStatus = quickShipActivityMain.DRAW;
-                animating = true;
-                opponentAnimating = false;
-                animationStage = 2;
-                mPlayModeStatusText.setVisibility(View.INVISIBLE);
-                mPlayModeEditTextSend.setEnabled(false);
-                playModeOpponentGrid.deSelectCell();
-                playModeOpponentGrid.invalidate();
-                mFPSTextureView.tickStart();
-                nextAnimation();
-            }
-        });
+    public void drawGame(View v) {
+        if (!gameOver) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.GAME_DRAW, true);
+                    mBluetoothConnection.write(ParcelableUtil.marshall(data));
+                    gameOver = true;
+                    debugButtons = true;
+                    gameOverStatus = quickShipActivityMain.DRAW;
+                    animating = true;
+                    opponentAnimating = false;
+                    animationStage = 2;
+                    mPlayModeStatusText.setVisibility(View.INVISIBLE);
+                    mPlayModeEditTextSend.setEnabled(false);
+                    playModeOpponentGrid.deSelectCell();
+                    playModeOpponentGrid.invalidate();
+                    mFPSTextureView.tickStart();
+                    nextAnimation();
+                }
+            });
+        }
     }
 
     public boolean isPlayerChooseModeDone() {
@@ -1237,6 +1271,15 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         break;
 
                     case quickShipBluetoothPacketsToBeSent.GAME_WON:
+                        winGame(null);
+                        break;
+
+                    case quickShipBluetoothPacketsToBeSent.GAME_LOST:
+                        loseGame(null);
+                        break;
+
+                    case quickShipBluetoothPacketsToBeSent.GAME_DRAW:
+                        drawGame(null);
                         break;
 
                     case quickShipBluetoothPacketsToBeSent.QUIT:
@@ -1293,8 +1336,10 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 //Notify Second Player to start Game.
                 quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.TURN_DONE, true);
                 mBluetoothConnection.write(ParcelableUtil.marshall(data));
-                quickShipBluetoothPacketsToBeSent data2 = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.UUID, playerUUID);
-                mBluetoothConnection.write(ParcelableUtil.marshall(data2));
+                if (animateFirst == null) {
+                    quickShipBluetoothPacketsToBeSent data2 = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.UUID, playerUUID);
+                    mBluetoothConnection.write(ParcelableUtil.marshall(data2));
+                }
             }
         }
     };
@@ -2221,22 +2266,29 @@ public class quickShipActivityMain extends Activity implements Runnable {
     public void startGameOverAnimation() {
         final ArrayList<Integer> emojiList = generateEmojiArray(gameOverStatus);
         final Random randomGenerator = new Random();
-        Timer mTimer = new Timer();
-        mTimer.schedule(new TimerTask() {
+
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        scheduler.schedule(new Runnable() {
             @Override
             public void run() {
-                if (!gameOver) {
-                    cancel();
-                } else {
-                    for (int i = 0; i < 5; i++) {
-                        int index = randomGenerator.nextInt(emojiList.size());
-                        String randomEmoji = getEmojiByUnicode(emojiList.get(index));
-                        spawnGameOverEmojis(randomEmoji);
+                Timer mTimer = new Timer();
+                mTimer.schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        if (!gameOver) {
+                            cancel();
+                        } else {
+                            for (int i = 0; i < 5; i++) {
+                                int index = randomGenerator.nextInt(emojiList.size());
+                                String randomEmoji = getEmojiByUnicode(emojiList.get(index));
+                                spawnGameOverEmojis(randomEmoji);
+                            }
+                        }
                     }
-                }
+                }, 0, 200);
+                createGameOverText();
             }
-        }, 0, 200);
-        createGameOverText();
+        }, 800, TimeUnit.MILLISECONDS);
     }
 
     public void spawnGameOverEmojis(final String emoji) {

@@ -18,11 +18,13 @@ public class quickShipBluetoothPacketsToBeSent implements Parcelable {
     static final int MOVES = 2;
     static final int TURN_DONE = 3;
     static final int GAME_WON = 4;
-    static final int QUIT = 5;
-    static final int NAME_CHANGE = 6;
-    static final int DISCONNECTED = 7;
-    static final int UUID = 8;
-    static final int ANIMATIONDONE = 9;
+    static final int GAME_LOST = 5;
+    static final int GAME_DRAW = 6;
+    static final int QUIT = 7;
+    static final int NAME_CHANGE = 8;
+    static final int DISCONNECTED = 9;
+    static final int UUID = 10;
+    static final int ANIMATIONDONE = 11;
 
     public quickShipBluetoothPacketsToBeSent(int packetType, String stringType) {
         this.packetType = packetType;
