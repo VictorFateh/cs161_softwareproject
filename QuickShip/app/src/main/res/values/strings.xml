@@ -37,7 +37,7 @@
     <string name="play_mode_game_won_chat">You Won!</string>
     <string name="play_mode_game_lost_chat">You Lost!</string>
     <string name="play_mode_game_draw_chat">Game ended in a draw!</string>
-    <string name="play_mode_turn_chat">Turn: </string>
+    <string name="play_mode_turn_chat">Turn:\u0020</string>
     <string name="play_mode_divider_chat">-------------------------</string>
     <string name="play_mode_opponent_hit_chat">Your opponent hit your ship!</string>
     <string name="play_mode_opponent_miss_chat">Your opponent missed!</string>
