@@ -24,6 +24,8 @@ import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.design.widget.BottomNavigationView;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AlertDialog;
@@ -34,6 +36,8 @@ import android.text.TextPaint;
 import android.util.Log;
 import android.view.Display;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -91,9 +95,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
     private volatile quickShipViewPlayModePlayerGrid playModePlayerGrid;
     private volatile quickShipViewPlayModeOpponentGrid playModeOpponentGrid;
     private Button mPlayModeFireBtn;
-    private Button mPlayerGridBtn;
-    private Button mOpponentGridBtn;
-    private Button mPlayModeOptionsBtn;
     private Button startGame;
     private FrameLayout mChooseModeFrameLayout;
     private FrameLayout mSplashScreenFrameLayout;
@@ -161,6 +162,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
     static final int WON = 0;
     static final int LOST = 1;
     static final int DRAW = 2;
+    private BottomNavigationView mBottomNavigation;
 
     private static final UUID MY_UUID_INSECURE = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
 
@@ -174,7 +176,44 @@ public class quickShipActivityMain extends Activity implements Runnable {
         initialBoot = true;
         initializeView();
         emojiPopUpInitializer();
+        bottomNavInitializer();
         this.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
+    }
+
+    public void bottomNavInitializer(){
+        mBottomNavigation = (BottomNavigationView) findViewById(R.id.bottom_nav);
+        mBottomNavigation.getMenu().getItem(1).setChecked(true);
+
+        mBottomNavigation.setOnNavigationItemSelectedListener(
+                new BottomNavigationView.OnNavigationItemSelectedListener() {
+                    @Override
+                    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+                        switch (item.getItemId()) {
+                            case R.id.item_my_board:
+                                if (!animating && !fireButtonPressed) {
+                                    if (playModeFlipper.getDisplayedChild() == 1 || playModeFlipper.getDisplayedChild() == 2) {
+                                        playModeSwitchToPlayerGrid(null);
+                                    }
+                                }
+                                break;
+                            case R.id.item_opponent_board:
+                                if (!animating && !fireButtonPressed) {
+                                    if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 2) {
+                                        playModeSwitchToOpponentGrid(null);
+                                    }
+                                }
+                                break;
+                            case R.id.item_options:
+                                if (!animating && !fireButtonPressed) {
+                                    if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 1) {
+                                        playModeSwitchToOptions(null);
+                                    }
+                                }
+                                break;
+                        }
+                        return false;
+                    }
+                });
     }
 
     public void initializeView() {
@@ -196,59 +235,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 if (event.getAction() == MotionEvent.ACTION_DOWN)
                     mPlayModeFireBtn.setBackgroundResource(R.drawable.firebutton_02);
                 return false;
-            }
-        });
-
-        mPlayerGridBtn = (Button) findViewById(R.id.play_mode_player_grid_btn);
-        mPlayerGridBtn.setOnTouchListener(new View.OnTouchListener() {
-
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (!animating && !fireButtonPressed) {
-                    if (playModeFlipper.getDisplayedChild() == 1 || playModeFlipper.getDisplayedChild() == 2) {
-                        playModeSwitchToPlayerGrid(null);
-                        mOpponentGridBtn.setPressed(false);
-                        mPlayModeOptionsBtn.setPressed(false);
-                        mPlayerGridBtn.setPressed(true);
-                    }
-                }
-                return true;
-            }
-        });
-
-        mOpponentGridBtn = (Button) findViewById(R.id.play_mode_opponent_grid_btn);
-        mOpponentGridBtn.setPressed(true);
-        mOpponentGridBtn.setOnTouchListener(new View.OnTouchListener() {
-
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (!animating && !fireButtonPressed) {
-                    if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 2) {
-                        playModeSwitchToOpponentGrid(null);
-                        mPlayerGridBtn.setPressed(false);
-                        mPlayModeOptionsBtn.setPressed(false);
-                        mOpponentGridBtn.setPressed(true);
-                    }
-                }
-                return true;
-
-            }
-        });
-
-        mPlayModeOptionsBtn = (Button) findViewById(R.id.play_mode_options_btn);
-        mPlayModeOptionsBtn.setOnTouchListener(new View.OnTouchListener() {
-
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (!animating && !fireButtonPressed) {
-                    if (playModeFlipper.getDisplayedChild() == 0 || playModeFlipper.getDisplayedChild() == 1) {
-                        playModeSwitchToOptions(null);
-                        mPlayerGridBtn.setPressed(false);
-                        mOpponentGridBtn.setPressed(false);
-                        mPlayModeOptionsBtn.setPressed(true);
-                    }
-                }
-                return true;
             }
         });
 
@@ -600,17 +586,11 @@ public class quickShipActivityMain extends Activity implements Runnable {
             @Override
             public void run() {
                 if (playModeFlipper.getDisplayedChild() == 0) {
-                    mOpponentGridBtn.setPressed(false);
-                    mPlayModeOptionsBtn.setPressed(false);
-                    mPlayerGridBtn.setPressed(true);
+                    //Set Player Item to checked
                 } else if (playModeFlipper.getDisplayedChild() == 1) {
-                    mPlayModeOptionsBtn.setPressed(false);
-                    mPlayerGridBtn.setPressed(false);
-                    mOpponentGridBtn.setPressed(true);
+                    //Set opponent item to checked
                 } else {
-                    mOpponentGridBtn.setPressed(false);
-                    mPlayerGridBtn.setPressed(false);
-                    mPlayModeOptionsBtn.setPressed(true);
+                    //Set Options menu to checked
                 }
             }
         });
@@ -675,9 +655,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.in_from_left));
                 playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.out_from_right));
                 playModeFlipper.setDisplayedChild(0);
-                mOpponentGridBtn.setPressed(false);
-                mPlayModeOptionsBtn.setPressed(false);
-                mPlayerGridBtn.setPressed(true);
+                mBottomNavigation.getMenu().getItem(0).setChecked(true);
+                mBottomNavigation.getMenu().getItem(1).setChecked(false);
+                mBottomNavigation.getMenu().getItem(2).setChecked(false);
             }
         }
     }
@@ -693,9 +673,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.out_from_right));
                 }
                 playModeFlipper.setDisplayedChild(1);
-                mPlayerGridBtn.setPressed(false);
-                mPlayModeOptionsBtn.setPressed(false);
-                mOpponentGridBtn.setPressed(true);
+                mBottomNavigation.getMenu().getItem(1).setChecked(true);
+                mBottomNavigation.getMenu().getItem(0).setChecked(false);
+                mBottomNavigation.getMenu().getItem(2).setChecked(false);
             }
         }
     }
@@ -706,9 +686,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 playModeFlipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.in_from_right));
                 playModeFlipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.out_from_left));
                 playModeFlipper.setDisplayedChild(2);
-                mPlayerGridBtn.setPressed(false);
-                mOpponentGridBtn.setPressed(false);
-                mPlayModeOptionsBtn.setPressed(true);
+                mBottomNavigation.getMenu().getItem(2).setChecked(true);
+                mBottomNavigation.getMenu().getItem(0).setChecked(false);
+                mBottomNavigation.getMenu().getItem(1).setChecked(false);
             }
         }
     }
@@ -1631,10 +1611,10 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
     public void cachePlayModeViews() {
         playModeFlipper.setDisplayedChild(0);
+        mBottomNavigation.getMenu().getItem(0).setChecked(true);
+        mBottomNavigation.getMenu().getItem(1).setChecked(false);
+        mBottomNavigation.getMenu().getItem(2).setChecked(false);
         emojiPopup.showAtBottom();
-        mOpponentGridBtn.setPressed(false);
-        mPlayModeOptionsBtn.setPressed(false);
-        mPlayerGridBtn.setPressed(true);
         mFPSTextureView.tickStart();
         mFPSTextureView.removeAllChildren();
 
@@ -1647,9 +1627,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     public void run() {
                         emojiPopup.dismiss();
                         playModeFlipper.setDisplayedChild(1);
-                        mPlayerGridBtn.setPressed(false);
-                        mPlayModeOptionsBtn.setPressed(false);
-                        mOpponentGridBtn.setPressed(true);
+                        mBottomNavigation.getMenu().getItem(1).setChecked(true);
+                        mBottomNavigation.getMenu().getItem(0).setChecked(false);
+                        mBottomNavigation.getMenu().getItem(2).setChecked(false);
                         mFPSTextureView.clearAnimation();
                         mFPSTextureView.refreshDrawableState();
                         pauseAnimation();
@@ -1682,9 +1662,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
                                 }
                             });
                             playModeFlipper.setDisplayedChild(0);
-                            mOpponentGridBtn.setPressed(false);
-                            mPlayModeOptionsBtn.setPressed(false);
-                            mPlayerGridBtn.setPressed(true);
+                            mBottomNavigation.getMenu().getItem(0).setChecked(true);
+                            mBottomNavigation.getMenu().getItem(1).setChecked(false);
+                            mBottomNavigation.getMenu().getItem(2).setChecked(false);
                         } else {
                             startPlayerBoardAnimation2();
                         }
@@ -1742,9 +1722,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
                                 }
                             });
                             playModeFlipper.setDisplayedChild(1);
-                            mPlayerGridBtn.setPressed(false);
-                            mPlayModeOptionsBtn.setPressed(false);
-                            mOpponentGridBtn.setPressed(true);
+                            mBottomNavigation.getMenu().getItem(1).setChecked(true);
+                            mBottomNavigation.getMenu().getItem(0).setChecked(false);
+                            mBottomNavigation.getMenu().getItem(2).setChecked(false);
                         } else {
                             startOpponentBoardAnimation2();
                         }
@@ -1794,9 +1774,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
                                 }
                             });
                             playModeFlipper.setDisplayedChild(1);
-                            mPlayerGridBtn.setPressed(false);
-                            mPlayModeOptionsBtn.setPressed(false);
-                            mOpponentGridBtn.setPressed(true);
+                            mBottomNavigation.getMenu().getItem(1).setChecked(true);
+                            mBottomNavigation.getMenu().getItem(0).setChecked(false);
+                            mBottomNavigation.getMenu().getItem(2).setChecked(false);
                         } else {
                             startNextTurn2();
                         }
@@ -2199,9 +2179,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
                                 }
                             });
                             playModeFlipper.setDisplayedChild(1);
-                            mPlayerGridBtn.setPressed(false);
-                            mPlayModeOptionsBtn.setPressed(false);
-                            mOpponentGridBtn.setPressed(true);
+                            mBottomNavigation.getMenu().getItem(1).setChecked(true);
+                            mBottomNavigation.getMenu().getItem(0).setChecked(false);
+                            mBottomNavigation.getMenu().getItem(2).setChecked(false);
                         } else {
                             createNewTurnMsgBitmap2();
                         }
