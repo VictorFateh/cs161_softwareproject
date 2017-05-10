@@ -721,12 +721,13 @@ public class quickShipViewChooseModeGrid extends View {
     }
 
     public void debugQuickPlaceShip() {
-        mMainActivity.newGame();
-        mGameModel.getPlayerGameBoard().addShip(0, quickShipModelBoardSlot.TWO, quickShipModelBoardSlot.HORIZONTAL);
-        mGameModel.getPlayerGameBoard().addShip(10, quickShipModelBoardSlot.THREE_A, quickShipModelBoardSlot.HORIZONTAL);
-        mGameModel.getPlayerGameBoard().addShip(20, quickShipModelBoardSlot.THREE_B, quickShipModelBoardSlot.HORIZONTAL);
-        mGameModel.getPlayerGameBoard().addShip(30, quickShipModelBoardSlot.FOUR, quickShipModelBoardSlot.HORIZONTAL);
-        mGameModel.getPlayerGameBoard().addShip(40, quickShipModelBoardSlot.FIVE, quickShipModelBoardSlot.HORIZONTAL);
+        quickShipModelBoard mPlayerGameBoard = new quickShipModelBoard();
+        mPlayerGameBoard.addShip(0, quickShipModelBoardSlot.TWO, quickShipModelBoardSlot.HORIZONTAL);
+        mPlayerGameBoard.addShip(10, quickShipModelBoardSlot.THREE_A, quickShipModelBoardSlot.HORIZONTAL);
+        mPlayerGameBoard.addShip(20, quickShipModelBoardSlot.THREE_B, quickShipModelBoardSlot.HORIZONTAL);
+        mPlayerGameBoard.addShip(30, quickShipModelBoardSlot.FOUR, quickShipModelBoardSlot.HORIZONTAL);
+        mPlayerGameBoard.addShip(40, quickShipModelBoardSlot.FIVE, quickShipModelBoardSlot.HORIZONTAL);
+        mGameModel.setPlayerGameBoard(mPlayerGameBoard);
         currentIndex = -1;
         deSelectShip();
     }

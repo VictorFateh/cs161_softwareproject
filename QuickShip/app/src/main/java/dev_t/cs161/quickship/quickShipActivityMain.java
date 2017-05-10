@@ -175,12 +175,15 @@ public class quickShipActivityMain extends Activity implements Runnable {
         screenHeight = (float) screen.y;
         initialBoot = true;
         initializeView();
+        otherViewsInitializeObjects();
+        blueToothInitializeObjects();
+        launchStartScreen();
         emojiPopUpInitializer();
         bottomNavInitializer();
         this.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
     }
 
-    public void bottomNavInitializer(){
+    public void bottomNavInitializer() {
         mBottomNavigation = (BottomNavigationView) findViewById(R.id.bottom_nav);
         mBottomNavigation.getMenu().getItem(1).setChecked(true);
 
@@ -337,12 +340,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
         });
 
         mSplashScreenPlayerName.setText(mPlayerName);
-
-        otherViewsInitializeObjects();
-
-        blueToothInitializeObjects();
-
-        launchStartScreen();
     }
 
     public void otherViewsInitializeObjects() {
@@ -379,23 +376,52 @@ public class quickShipActivityMain extends Activity implements Runnable {
         topPlayerFrameBorder.addView(new quickShipViewGridBorder(this, ContextCompat.getColor(this, R.color.play_mode_player_frame_color)));
 
         mFPSTextureView = (FPSTextureView) findViewById(R.id.animation_texture_view);
+    }
 
-        animateFirst = null;
+    public void emojiPopUpInitializer() {
+        LinearLayout root = (LinearLayout) findViewById(R.id.play_mode_opponent_top_linear);
+        emojiPopup = new EmojiconsPopup(root, this);
+
+        Double widthWithMargin = screenWidth * 0.9;
+        Double heightWithMargin = screenHeight - (screenWidth * 0.1);
+        emojiPopup.setSize(widthWithMargin.intValue(), heightWithMargin.intValue());
+
+        emojiPopup.setOnEmojiconClickedListener(new OnEmojiconClickedListener() {
+
+            @Override
+            public void onEmojiconClicked(Emojicon emojicon) {
+
+                playerChosenEmoji = emojicon.getEmoji();
+                //Log.d("DEBUG", opponentChosenEmoji);
+                emojiPopup.dismiss();
+                mPlayModeEditTextSend.setEnabled(true);
+                playerChosenTarget = playModeOpponentGrid.getCurrentIndex();
+
+                quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.MOVES, playerChosenTarget, getPlayerChosenEmoji());
+                mBluetoothConnection.write(ParcelableUtil.marshall(data));
+                playerTurnDone = true;
+                checkPlayModeTurnDone("player");
+
+            }
+        });
     }
-    public boolean btAdapterExists(){
-        if(btAdapter != null) {
+
+    public boolean btAdapterExists() {
+        if (btAdapter != null) {
             return true;
-        }else{
+        } else {
             return false;
         }
     }
-    public boolean isBTon(){
-        if(btAdapter.isEnabled()){
+
+    public boolean isBTon() {
+        if (btAdapter.isEnabled()) {
             return true;
-        }else{
+        } else {
             return false;
         }
     }
+
     public void blueToothInitializeObjects() {
         btAdapter = BluetoothAdapter.getDefaultAdapter();
         messages = new StringBuilder();
@@ -409,9 +435,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                                   new DialogInterface.OnClickListener() {
                                       public void onClick(DialogInterface dialog, int which) {
                                           dialog.dismiss();
-                                          // Temporary show the chooes mode even though there's no bluetooth
-                                          // newGame();
-                                          // mainScreenViewFlipper.setDisplayedChild(1);
                                       }
                                   });
             alertDialog.show();
@@ -604,12 +627,12 @@ public class quickShipActivityMain extends Activity implements Runnable {
         fireButtonPressed = false;
         gameOverStatus = 3;
         turnCount = 1;
-        if (animateFirst == null) {
-            playerUUID = UUID.randomUUID().toString();
-        }
+        animateFirst = null;
+        playerUUID = UUID.randomUUID().toString();
         opponentUUID = "";
         messages.setLength(0);
         mChooseModeChatMessageLog.setText(getResources().getString(R.string.choose_mode_chat_message_default_message));
+        mPlayModeChatMessageLog.setText("");
         animating = false;
         playerChooseModeDone = false;
         opponentChooseModeDone = false;
@@ -798,10 +821,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
     public void checkChooseModeDone(String status) {
         if (playerChooseModeDone && opponentChooseModeDone) {
-            if (animateFirst == null) {
-                quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.UUID, playerUUID);
-                mBluetoothConnection.write(ParcelableUtil.marshall(data));
-            }
             mainScreenViewFlipper.setDisplayedChild(2);
             cachePlayModeViews();
             reinitializeUI();
@@ -837,11 +856,11 @@ public class quickShipActivityMain extends Activity implements Runnable {
     public void quitGame() {
         gameOver = false;
         animating = false;
-        mFPSTextureView.removeAllChildren();
         playerChooseModeDone = false;
         opponentChooseModeDone = false;
         playerTurnDone = false;
         opponentTurnDone = false;
+        messages.setLength(0);
 
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
@@ -851,8 +870,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        mFPSTextureView.clearAnimation();
-                        mFPSTextureView.refreshDrawableState();
+                        animationReset();
                         pauseAnimation();
                         switchToSplashScreen(null);
                         mBluetoothConnection.disconnect_threads();
@@ -870,11 +888,11 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
         gameOver = false;
         animating = false;
-        mFPSTextureView.removeAllChildren();
         playerChooseModeDone = false;
         opponentChooseModeDone = false;
         playerTurnDone = false;
         opponentTurnDone = false;
+        messages.setLength(0);
 
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
@@ -884,8 +902,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        mFPSTextureView.clearAnimation();
-                        mFPSTextureView.refreshDrawableState();
+                        animationReset();
                         pauseAnimation();
                         switchToSplashScreen(null);
                         mBluetoothConnection.disconnect_threads();
@@ -989,65 +1006,77 @@ public class quickShipActivityMain extends Activity implements Runnable {
     }
 
     public void nextAnimation() {
-        switch (animationStage) {
-            case quickShipActivityMain.ANIMSTAGE1:
-                animationReset();
-                if (animateFirst) {
-                    startPlayerBoardAnimation();
-                } else {
-                    startOpponentBoardAnimation();
-                }
-                break;
-            case quickShipActivityMain.ANIMSTAGE2:
-                animationReset();
-                if (animateFirst) {
-                    startOpponentBoardAnimation();
-                } else {
-                    startPlayerBoardAnimation();
-                }
-                break;
-            case quickShipActivityMain.ANIMSTAGE3:
-                animationReset();
-                quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.ANIMATIONDONE, true);
-                mBluetoothConnection.write(ParcelableUtil.marshall(data));
-                if (!opponentAnimating) {
-                    animationStage++;
+        if (animateFirst == null) {
+            quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.UUID, playerUUID);
+            mBluetoothConnection.write(ParcelableUtil.marshall(data));
+            ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+            scheduler.schedule(new Runnable() {
+                @Override
+                public void run() {
                     nextAnimation();
-                } else {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            mPlayModeStatusText.setText(getResources().getString(R.string.play_mode_waiting_opponent_status));
-                            mPlayModeStatusText.setVisibility(View.VISIBLE);
-                        }
-                    });
                 }
-                break;
-            case quickShipActivityMain.ANIMSTAGE4:
-                animationReset();
-                boolean playerGameOver = mGameModel.getPlayerGameBoard().checkGameOver();
-                boolean opponentGameOver = mGameModel.getOpponentGameBoard().checkGameOver();
-                if (!debugButtons && !playerGameOver && !opponentGameOver) {
-                    createNewTurnMsgBitmap();
-                } else {
-                    gameOver = true;
-                    if (!debugButtons) {
-                        if (playerGameOver && opponentGameOver) {
-                            gameOverStatus = quickShipActivityMain.DRAW;
-                        } else if (playerGameOver) {
-                            gameOverStatus = quickShipActivityMain.LOST;
-                        } else {
-                            gameOverStatus = quickShipActivityMain.WON;
-                        }
+            }, 400, TimeUnit.MILLISECONDS);
+        } else {
+            switch (animationStage) {
+                case quickShipActivityMain.ANIMSTAGE1:
+                    animationReset();
+                    if (animateFirst) {
+                        startPlayerBoardAnimation();
+                    } else {
+                        startOpponentBoardAnimation();
                     }
-                    animationStage++;
-                    startGameOverAnimation();
-                    nextAnimation();
-                }
-                break;
-            case quickShipActivityMain.ANIMSTAGE5:
-                startNextTurn();
-                break;
+                    break;
+                case quickShipActivityMain.ANIMSTAGE2:
+                    animationReset();
+                    if (animateFirst) {
+                        startOpponentBoardAnimation();
+                    } else {
+                        startPlayerBoardAnimation();
+                    }
+                    break;
+                case quickShipActivityMain.ANIMSTAGE3:
+                    animationReset();
+                    quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.ANIMATIONDONE, true);
+                    mBluetoothConnection.write(ParcelableUtil.marshall(data));
+                    if (!opponentAnimating) {
+                        animationStage++;
+                        nextAnimation();
+                    } else {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                mPlayModeStatusText.setText(getResources().getString(R.string.play_mode_waiting_opponent_status));
+                                mPlayModeStatusText.setVisibility(View.VISIBLE);
+                            }
+                        });
+                    }
+                    break;
+                case quickShipActivityMain.ANIMSTAGE4:
+                    animationReset();
+                    boolean playerGameOver = mGameModel.getPlayerGameBoard().checkGameOver();
+                    boolean opponentGameOver = mGameModel.getOpponentGameBoard().checkGameOver();
+                    if (!debugButtons && !playerGameOver && !opponentGameOver) {
+                        createNewTurnMsgBitmap();
+                    } else {
+                        gameOver = true;
+                        if (!debugButtons) {
+                            if (playerGameOver && opponentGameOver) {
+                                gameOverStatus = quickShipActivityMain.DRAW;
+                            } else if (playerGameOver) {
+                                gameOverStatus = quickShipActivityMain.LOST;
+                            } else {
+                                gameOverStatus = quickShipActivityMain.WON;
+                            }
+                        }
+                        animationStage++;
+                        startGameOverAnimation();
+                        nextAnimation();
+                    }
+                    break;
+                case quickShipActivityMain.ANIMSTAGE5:
+                    startNextTurn();
+                    break;
+            }
         }
     }
 
@@ -1154,9 +1183,10 @@ public class quickShipActivityMain extends Activity implements Runnable {
         int REQUEST_ENABLE_BT = 1;
         startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
     }
+
     public void enableBluetooth() {
         //toast_displayMessage("Attempting to enable Bluetooth...");
-        Log.d("UnitTesting","Attempting to enable Bluetooth...");
+        Log.d("UnitTesting", "Attempting to enable Bluetooth...");
         Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
 
         IntentFilter BlueToothfilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
@@ -1289,8 +1319,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                                     mPlayModeFireBtn.setEnabled(true);
                                 }
                             });
-                        }
-                        else {
+                        } else {
                             if (!quitGamePushed && !leftGameDisplayedOnce) {
                                 quitGame();
                                 AlertDialog alertDialog = new AlertDialog.Builder(mActivityMain).create();
@@ -1311,15 +1340,10 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 Log.d("MainActivity ->", "startGame triggered.");
                 mBTListViewDialog.dismiss();
                 newGame();
-                //mainScreenViewFlipper.setDisplayedChild(1);
-                switchToChooseModeScreen(null);
+                mainScreenViewFlipper.setDisplayedChild(1);
                 //Notify Second Player to start Game.
                 quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.TURN_DONE, true);
                 mBluetoothConnection.write(ParcelableUtil.marshall(data));
-                if (animateFirst == null) {
-                    quickShipBluetoothPacketsToBeSent data2 = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.UUID, playerUUID);
-                    mBluetoothConnection.write(ParcelableUtil.marshall(data2));
-                }
             }
         }
     };
@@ -1446,13 +1470,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                                               }
                                           });
                     alertDialog.show();
-                    //mBTDevice = device; // device it is paired with
-                    //mBluetoothConnection = new BluetoothConnectionService(mActivityMain);
-                    //startConnection();
-                    //mBTListViewDialog.dismiss();
-                    // Make new game. Show choose mode screen
-                    //newGame();
-                    //mainScreenViewFlipper.setDisplayedChild(1);
                 }
 
                 // case 2: creating a bond
@@ -1464,18 +1481,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 // case 3: disconnecting a bond
                 if (device.getBondState() == BluetoothDevice.BOND_NONE) {
                     Log.d("BT Bonding", "Bond NONE with " + device.getName());
-                    /*
-                    AlertDialog alertDialog = new AlertDialog.Builder(mActivityMain).create();
-                    alertDialog.setTitle("Disconnect");
-                    alertDialog.setMessage("Device Disconnected");
-                    alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
-                                          new DialogInterface.OnClickListener() {
-                                              public void onClick(DialogInterface dialog, int which) {
-                                                  dialog.dismiss();
-                                              }
-                                          });
-                    alertDialog.show();
-                    */
                 }
 
             }
@@ -1609,14 +1614,14 @@ public class quickShipActivityMain extends Activity implements Runnable {
         this.opponentChosenEmoji = opponentChosenEmoji;
     }
 
+    // Used to cache the player grid and opponent grid into memory so there
+    // won't be lag on initial screen change
     public void cachePlayModeViews() {
         playModeFlipper.setDisplayedChild(0);
         mBottomNavigation.getMenu().getItem(0).setChecked(true);
         mBottomNavigation.getMenu().getItem(1).setChecked(false);
         mBottomNavigation.getMenu().getItem(2).setChecked(false);
         emojiPopup.showAtBottom();
-        mFPSTextureView.tickStart();
-        mFPSTextureView.removeAllChildren();
 
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
         scheduler.schedule(new Runnable() {
@@ -1630,13 +1635,12 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         mBottomNavigation.getMenu().getItem(1).setChecked(true);
                         mBottomNavigation.getMenu().getItem(0).setChecked(false);
                         mBottomNavigation.getMenu().getItem(2).setChecked(false);
-                        mFPSTextureView.clearAnimation();
-                        mFPSTextureView.refreshDrawableState();
-                        pauseAnimation();
+                        mFPSTextureView.tickStart();
+                        animationReset();
                     }
                 });
             }
-        }, 100, TimeUnit.MILLISECONDS);
+        }, 200, TimeUnit.MILLISECONDS);
     }
 
     public void startPlayerBoardAnimation() {
@@ -1691,8 +1695,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
         long tempDelay;
         if (animationStage == quickShipActivityMain.ANIMSTAGE1 && !animateFirst) {
             tempDelay = 1200;
-        }
-        else {
+        } else {
             tempDelay = 1000;
         }
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -1824,11 +1827,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
             String msg5;
             if (gameOverStatus == quickShipActivityMain.DRAW) {
                 msg5 = getColoredSpanned(getResources().getString(R.string.play_mode_game_draw_chat), "#164077");
-            }
-            else if (gameOverStatus == quickShipActivityMain.WON) {
+            } else if (gameOverStatus == quickShipActivityMain.WON) {
                 msg5 = getColoredSpanned(getResources().getString(R.string.play_mode_game_won_chat), "#164077");
-            }
-            else {
+            } else {
                 msg5 = getColoredSpanned(getResources().getString(R.string.play_mode_game_lost_chat), "#164077");
             }
             messages.append(msg5 + getResources().getString(R.string.play_mode_break_tags_chat));
@@ -2274,14 +2275,13 @@ public class quickShipActivityMain extends Activity implements Runnable {
     public void spawnGameOverEmojis(final String emoji) {
         Bitmap emojiBitmap = textToBitmap(emoji, mCellWidth);
         float randomStartingX = randInt(0, Math.round(screenWidth));
-        int randomAccelerationX = randInt(0,1);
+        int randomAccelerationX = randInt(0, 1);
         if (randomAccelerationX == 0) {
             randomAccelerationX = -8;
-        }
-        else {
+        } else {
             randomAccelerationX = 8;
         }
-        int randomAccelerationY = randInt(0,2);
+        int randomAccelerationY = randInt(0, 2);
 
         final DisplayObject bitmapDisplay = new DisplayObject();
         bitmapDisplay.with(new BitmapDrawer(emojiBitmap))
@@ -2349,34 +2349,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 .end();
 
         mFPSTextureView.addChild(bitmapDisplay);
-    }
-
-    public void emojiPopUpInitializer() {
-        LinearLayout root = (LinearLayout) findViewById(R.id.play_mode_opponent_top_linear);
-        emojiPopup = new EmojiconsPopup(root, this);
-
-        Double widthWithMargin = screenWidth * 0.9;
-        Double heightWithMargin = screenHeight - (screenWidth * 0.1);
-        emojiPopup.setSize(widthWithMargin.intValue(), heightWithMargin.intValue());
-
-        emojiPopup.setOnEmojiconClickedListener(new OnEmojiconClickedListener() {
-
-            @Override
-            public void onEmojiconClicked(Emojicon emojicon) {
-
-                playerChosenEmoji = emojicon.getEmoji();
-                //Log.d("DEBUG", opponentChosenEmoji);
-                emojiPopup.dismiss();
-                mPlayModeEditTextSend.setEnabled(true);
-                playerChosenTarget = playModeOpponentGrid.getCurrentIndex();
-
-                quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.MOVES, playerChosenTarget, getPlayerChosenEmoji());
-                mBluetoothConnection.write(ParcelableUtil.marshall(data));
-                playerTurnDone = true;
-                checkPlayModeTurnDone("player");
-
-            }
-        });
     }
 
     public static Bitmap textToBitmap(String text, float textWidth) {
