@@ -605,7 +605,8 @@ public class quickShipActivityMain extends Activity implements Runnable {
         gameOverStatus = 3;
         turnCount = 1;
         if (animateFirst == null) {
-            playerUUID = UUID.randomUUID().toString();
+            //playerUUID = UUID.randomUUID().toString();
+            playerUUID = btAdapter.getAddress();
         }
         opponentUUID = "";
         messages.setLength(0);
@@ -799,8 +800,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
     public void checkChooseModeDone(String status) {
         if (playerChooseModeDone && opponentChooseModeDone) {
             if (animateFirst == null) {
-                quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.UUID, playerUUID);
-                mBluetoothConnection.write(ParcelableUtil.marshall(data));
+                setAnimateFirst();
+                //quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.UUID, playerUUID);
+                //mBluetoothConnection.write(ParcelableUtil.marshall(data));
             }
             mainScreenViewFlipper.setDisplayedChild(2);
             cachePlayModeViews();
@@ -906,6 +908,14 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 }
             });
             nextAnimation();
+        }
+    }
+
+    public void setAnimateFirst(){
+        if(playerUUID.compareTo(opponentUUID) > 0){
+            animateFirst = true;
+        }else{
+            animateFirst = false;
         }
     }
 
@@ -1244,7 +1254,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         break;
 
                     case quickShipBluetoothPacketsToBeSent.UUID:
-                        receivedOpponentUUID(data.getPlayerID());
+                        //receivedOpponentUUID(data.getPlayerID());
                         break;
 
                     case quickShipBluetoothPacketsToBeSent.TURN_DONE:
@@ -1316,10 +1326,14 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 //Notify Second Player to start Game.
                 quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.TURN_DONE, true);
                 mBluetoothConnection.write(ParcelableUtil.marshall(data));
+
+                //set opponent unique identifier
+                opponentUUID = mBluetoothConnection.opponentMAC();
+                /*
                 if (animateFirst == null) {
                     quickShipBluetoothPacketsToBeSent data2 = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.UUID, playerUUID);
                     mBluetoothConnection.write(ParcelableUtil.marshall(data2));
-                }
+                }*/
             }
         }
     };
