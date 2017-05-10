@@ -1024,8 +1024,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
     public void nextAnimation() {
         if (animateFirst == null) {
-            quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.UUID, playerUUID);
-            mBluetoothConnection.write(ParcelableUtil.marshall(data));
+            //quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.UUID, playerUUID);
+            //mBluetoothConnection.write(ParcelableUtil.marshall(data));
+            setAnimateFirst();
             ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
             scheduler.schedule(new Runnable() {
                 @Override
