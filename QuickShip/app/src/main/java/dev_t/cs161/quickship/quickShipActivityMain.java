@@ -24,6 +24,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.content.ContextCompat;
@@ -605,18 +606,18 @@ public class quickShipActivityMain extends Activity implements Runnable {
     }
 
     public void reinitializeUI() {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if (playModeFlipper.getDisplayedChild() == 0) {
-                    //Set Player Item to checked
-                } else if (playModeFlipper.getDisplayedChild() == 1) {
-                    //Set opponent item to checked
-                } else {
-                    //Set Options menu to checked
-                }
-            }
-        });
+//        runOnUiThread(new Runnable() {
+//            @Override
+//            public void run() {
+//                if (playModeFlipper.getDisplayedChild() == 0) {
+//                    //Set Player Item to checked
+//                } else if (playModeFlipper.getDisplayedChild() == 1) {
+//                    //Set opponent item to checked
+//                } else {
+//                    //Set Options menu to checked
+//                }
+//            }
+//        });
     }
 
     public void newGame() {
@@ -876,15 +877,10 @@ public class quickShipActivityMain extends Activity implements Runnable {
         scheduler.schedule(new Runnable() {
             @Override
             public void run() {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        animationReset();
-                        pauseAnimation();
-                        switchToSplashScreen(null);
-                        mBluetoothConnection.disconnect_threads();
-                    }
-                });
+                animationReset();
+                pauseAnimation();
+                switchToSplashScreen(null);
+                mBluetoothConnection.disconnect_threads();
             }
         }, 800, TimeUnit.MILLISECONDS);
     }
@@ -908,15 +904,10 @@ public class quickShipActivityMain extends Activity implements Runnable {
         scheduler.schedule(new Runnable() {
             @Override
             public void run() {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        animationReset();
-                        pauseAnimation();
-                        switchToSplashScreen(null);
-                        mBluetoothConnection.disconnect_threads();
-                    }
-                });
+                animationReset();
+                pauseAnimation();
+                switchToSplashScreen(null);
+                mBluetoothConnection.disconnect_threads();
             }
         }, 800, TimeUnit.MILLISECONDS);
     }
@@ -935,10 +926,10 @@ public class quickShipActivityMain extends Activity implements Runnable {
         }
     }
 
-    public void setAnimateFirst(){
-        if(playerUUID.compareTo(opponentUUID) > 0){
+    public void setAnimateFirst() {
+        if (playerUUID.compareTo(opponentUUID) > 0) {
             animateFirst = true;
-        }else{
+        } else {
             animateFirst = false;
         }
     }
@@ -959,38 +950,24 @@ public class quickShipActivityMain extends Activity implements Runnable {
     public void checkPlayModeTurnDone(String status) {
         if (playerTurnDone && opponentTurnDone) {
             if (enableAnimation) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        animating = true;
-                        opponentAnimating = false;
-                        animationStage = 0;
-                        mPlayModeStatusText.setVisibility(View.INVISIBLE);
-                        mPlayModeEditTextSend.setEnabled(false);
-                        playModeOpponentGrid.deSelectCell();
-                        playModeOpponentGrid.invalidate();
-                        mFPSTextureView.removeAllChildren();
-                        mFPSTextureView.tickStart();
-                        nextAnimation();
-                    }
-                });
+                animating = true;
+                opponentAnimating = false;
+                animationStage = 0;
+                mPlayModeStatusText.setVisibility(View.INVISIBLE);
+                mPlayModeEditTextSend.setEnabled(false);
+                playModeOpponentGrid.deSelectCell();
+                playModeOpponentGrid.invalidate();
+                nextAnimation();
             } else {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        animating = true;
-                        opponentAnimating = true;
-                        animationStage = 2;
-                        mPlayModeStatusText.setVisibility(View.INVISIBLE);
-                        mPlayModeEditTextSend.setEnabled(false);
-                        playModeOpponentGrid.deSelectCell();
-                        refreshOpponentBoard();
-                        refreshPlayerBoard();
-                        mFPSTextureView.removeAllChildren();
-                        mFPSTextureView.tickStart();
-                        nextAnimation();
-                    }
-                });
+                animating = true;
+                opponentAnimating = true;
+                animationStage = 2;
+                mPlayModeStatusText.setVisibility(View.INVISIBLE);
+                mPlayModeEditTextSend.setEnabled(false);
+                playModeOpponentGrid.deSelectCell();
+                refreshOpponentBoard();
+                refreshPlayerBoard();
+                nextAnimation();
             }
         } else {
             mPlayModeFireBtn.setEnabled(false);
@@ -1024,8 +1001,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
     public void nextAnimation() {
         if (animateFirst == null) {
-            //quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.UUID, playerUUID);
-            //mBluetoothConnection.write(ParcelableUtil.marshall(data));
             setAnimateFirst();
             ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
             scheduler.schedule(new Runnable() {
@@ -1034,77 +1009,103 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     nextAnimation();
                 }
             }, 400, TimeUnit.MILLISECONDS);
-        } else {
-            switch (animationStage) {
-                case quickShipActivityMain.ANIMSTAGE1:
-                    animationReset();
-                    if (animateFirst) {
-                        startPlayerBoardAnimation();
-                    } else {
-                        startOpponentBoardAnimation();
-                    }
-                    break;
-                case quickShipActivityMain.ANIMSTAGE2:
-                    animationReset();
-                    if (animateFirst) {
-                        startOpponentBoardAnimation();
-                    } else {
-                        startPlayerBoardAnimation();
-                    }
-                    break;
-                case quickShipActivityMain.ANIMSTAGE3:
-                    animationReset();
-                    quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.ANIMATIONDONE, true);
-                    mBluetoothConnection.write(ParcelableUtil.marshall(data));
-                    if (!opponentAnimating) {
-                        animationStage++;
-                        nextAnimation();
-                    } else {
+        }
+        else {
+            if (animationStage != quickShipActivityMain.ANIMSTAGE5) {
+                ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+                scheduler.schedule(new Runnable() {
+                    @Override
+                    public void run() {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                mPlayModeStatusText.setText(getResources().getString(R.string.play_mode_waiting_opponent_status));
-                                mPlayModeStatusText.setVisibility(View.VISIBLE);
+                                mFPSTextureView.removeAllChildren();
+                                mFPSTextureView.clearAnimation();
+                                mFPSTextureView.refreshDrawableState();
+                                ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+                                scheduler.schedule(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        nextAnimation2();
+                                    }
+                                }, 100, TimeUnit.MILLISECONDS);
                             }
                         });
                     }
-                    break;
-                case quickShipActivityMain.ANIMSTAGE4:
-                    animationReset();
-                    boolean playerGameOver = mGameModel.getPlayerGameBoard().checkGameOver();
-                    boolean opponentGameOver = mGameModel.getOpponentGameBoard().checkGameOver();
-                    if (!debugButtons && !playerGameOver && !opponentGameOver) {
-                        createNewTurnMsgBitmap();
-                    } else {
-                        gameOver = true;
-                        if (!debugButtons) {
-                            if (playerGameOver && opponentGameOver) {
-                                gameOverStatus = quickShipActivityMain.DRAW;
-                            } else if (playerGameOver) {
-                                gameOverStatus = quickShipActivityMain.LOST;
-                            } else {
-                                gameOverStatus = quickShipActivityMain.WON;
-                            }
-                        }
-                        animationStage++;
-                        startGameOverAnimation();
-                        nextAnimation();
-                    }
-                    break;
-                case quickShipActivityMain.ANIMSTAGE5:
-                    startNextTurn();
-                    break;
+                }, 0, TimeUnit.MILLISECONDS);
             }
+            else {
+                nextAnimation2();
+            }
+        }
+    }
+
+    public void nextAnimation2() {
+        switch (animationStage) {
+            case quickShipActivityMain.ANIMSTAGE1:
+                if (animateFirst) {
+                    startPlayerBoardAnimation();
+                } else {
+                    startOpponentBoardAnimation();
+                }
+                break;
+            case quickShipActivityMain.ANIMSTAGE2:
+                if (animateFirst) {
+                    startOpponentBoardAnimation();
+                } else {
+                    startPlayerBoardAnimation();
+                }
+                break;
+            case quickShipActivityMain.ANIMSTAGE3:
+                quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.ANIMATIONDONE, true);
+                mBluetoothConnection.write(ParcelableUtil.marshall(data));
+                if (!opponentAnimating) {
+                    animationStage++;
+                    nextAnimation();
+                } else {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mPlayModeStatusText.setText(getResources().getString(R.string.play_mode_waiting_opponent_status));
+                            mPlayModeStatusText.setVisibility(View.VISIBLE);
+                        }
+                    });
+                }
+                break;
+            case quickShipActivityMain.ANIMSTAGE4:
+                boolean playerGameOver = mGameModel.getPlayerGameBoard().checkGameOver();
+                boolean opponentGameOver = mGameModel.getOpponentGameBoard().checkGameOver();
+                if (!debugButtons && !playerGameOver && !opponentGameOver) {
+                    createNewTurnMsgBitmap();
+                } else {
+                    gameOver = true;
+                    if (!debugButtons) {
+                        if (playerGameOver && opponentGameOver) {
+                            gameOverStatus = quickShipActivityMain.DRAW;
+                        } else if (playerGameOver) {
+                            gameOverStatus = quickShipActivityMain.LOST;
+                        } else {
+                            gameOverStatus = quickShipActivityMain.WON;
+                        }
+                    }
+                    animationStage++;
+                    startGameOverAnimation();
+                    nextAnimation();
+                }
+                break;
+            case quickShipActivityMain.ANIMSTAGE5:
+                startNextTurn();
+                break;
         }
     }
 
     public void winGame(View v) {
         if (!gameOver) {
+            quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.GAME_LOST, true);
+            mBluetoothConnection.write(ParcelableUtil.marshall(data));
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.GAME_LOST, true);
-                    mBluetoothConnection.write(ParcelableUtil.marshall(data));
                     gameOver = true;
                     debugButtons = true;
                     gameOverStatus = quickShipActivityMain.WON;
@@ -1115,7 +1116,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     mPlayModeEditTextSend.setEnabled(false);
                     playModeOpponentGrid.deSelectCell();
                     playModeOpponentGrid.invalidate();
-                    mFPSTextureView.tickStart();
                     nextAnimation();
                 }
             });
