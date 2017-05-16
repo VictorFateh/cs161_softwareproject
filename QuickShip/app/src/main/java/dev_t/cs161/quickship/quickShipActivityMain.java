@@ -376,7 +376,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
         topPlayerFrameBorder.addView(new quickShipViewGridBorder(this, ContextCompat.getColor(this, R.color.play_mode_player_frame_color)));
 
         mFPSTextureView = (FPSTextureView) findViewById(R.id.animation_texture_view);
-        mFPSTextureView.tickStart();
     }
 
     public void emojiPopUpInitializer() {
@@ -579,7 +578,9 @@ public class quickShipActivityMain extends Activity implements Runnable {
         } else {
             initialBoot = false;
         }
-        mFPSTextureView.tickStart();
+        if (animating) {
+            mFPSTextureView.tickStart();
+        }
     }
 
     @Override
@@ -879,6 +880,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     @Override
                     public void run() {
                         animationReset();
+                        pauseAnimation();
                         switchToSplashScreen(null);
                         mBluetoothConnection.disconnect_threads();
                     }
@@ -910,6 +912,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     @Override
                     public void run() {
                         animationReset();
+                        pauseAnimation();
                         switchToSplashScreen(null);
                         mBluetoothConnection.disconnect_threads();
                     }
@@ -967,6 +970,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         playModeOpponentGrid.deSelectCell();
                         playModeOpponentGrid.invalidate();
                         mFPSTextureView.removeAllChildren();
+                        mFPSTextureView.tickStart();
                         nextAnimation();
                     }
                 });
@@ -983,6 +987,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         refreshOpponentBoard();
                         refreshPlayerBoard();
                         mFPSTextureView.removeAllChildren();
+                        mFPSTextureView.tickStart();
                         nextAnimation();
                     }
                 });
@@ -1110,6 +1115,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     mPlayModeEditTextSend.setEnabled(false);
                     playModeOpponentGrid.deSelectCell();
                     playModeOpponentGrid.invalidate();
+                    mFPSTextureView.tickStart();
                     nextAnimation();
                 }
             });
@@ -1133,6 +1139,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     mPlayModeEditTextSend.setEnabled(false);
                     playModeOpponentGrid.deSelectCell();
                     playModeOpponentGrid.invalidate();
+                    mFPSTextureView.tickStart();
                     nextAnimation();
                 }
             });
@@ -1156,6 +1163,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     mPlayModeEditTextSend.setEnabled(false);
                     playModeOpponentGrid.deSelectCell();
                     playModeOpponentGrid.invalidate();
+                    mFPSTextureView.tickStart();
                     nextAnimation();
                 }
             });
@@ -1654,6 +1662,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         mBottomNavigation.getMenu().getItem(1).setChecked(true);
                         mBottomNavigation.getMenu().getItem(0).setChecked(false);
                         mBottomNavigation.getMenu().getItem(2).setChecked(false);
+                        mFPSTextureView.tickStart();
                         animationReset();
                     }
                 });
@@ -1835,6 +1844,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
         animating = false;
         fireButtonPressed = false;
         if (!gameOver) {
+            pauseAnimation();
             turnCount++;
             playerTurnDone = false;
             opponentTurnDone = false;
