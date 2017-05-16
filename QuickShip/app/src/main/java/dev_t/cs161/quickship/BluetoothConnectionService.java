@@ -7,13 +7,13 @@ import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.Intent;
+import android.os.CountDownTimer;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.Charset;
 import java.util.UUID;
 
 
@@ -206,8 +206,23 @@ public class BluetoothConnectionService {
         mProgressDialog = ProgressDialog.show(mContext,"Starting Game"
                 ,"Waiting for Player...",true);
 
+        /*
+        //Remove Prompt after 10 seconds
+        new CountDownTimer(10000, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+            }
+            @Override
+            public void onFinish() {
+                if(mProgressDialog.isShowing())
+                    mProgressDialog.dismiss();
+            }
+        }.start();
+        */
+
         mConnectThread = new ConnectThread(device, uuid);
         mConnectThread.start();
+
     }
 
     /**
@@ -349,5 +364,9 @@ public class BluetoothConnectionService {
         mConnectThread.cancel();
         mInsecureAcceptThread.cancel();
     }
-
+    public String opponentMAC(){
+        Log.d("DEBUG","Opponent Device: "+mmDevice.getName());
+        Log.d("DEBUG","Opponent MAC: "+mmDevice.getAddress());
+        return mmDevice.getAddress();
+    }
 }

@@ -103,14 +103,17 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="match_parent"
                                 android:fillViewport="true">
+
                                 <TextView
                                     android:id="@+id/edit_text_chat_log_in_game"
                                     android:layout_width="match_parent"
                                     android:layout_height="match_parent"
                                     android:background="@color/choose_mode_chat_box"
+                                    android:fontFamily="monospace"
                                     android:padding="5dp"
                                     android:text="Welcome to the battlefield!"
-                                    android:textColor="@color/choose_mode_choose_ship_title"/>
+                                    android:textColor="@color/choose_mode_choose_ship_title"
+                                    />
                             </ScrollView>
                         </LinearLayout>
 
@@ -161,7 +164,7 @@
 </FrameLayout>
 
 <com.daasuu.library.FPSTextureView
-    android:id="@+id/animation_texture_view"
+    android:id="@+id/animation_texture_view2"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     app:FPSAnimator_fps="24"

@@ -5,12 +5,9 @@ import android.content.Context;
 import android.graphics.Point;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.Display;
 import android.view.MotionEvent;
-import android.view.animation.AnimationUtils;
 import android.widget.LinearLayout;
-import android.widget.ViewFlipper;
 
 import static java.lang.Math.abs;
 
@@ -45,9 +42,9 @@ public class quickShipLayoutPlayModePlayer extends LinearLayout {
                 break;
             case MotionEvent.ACTION_UP:
                 finalX = touchevent.getX();
-                if (initialX > finalX && abs(initialX - finalX) > swipeThreshold) {
+                if (initialX > finalX && abs(initialX - finalX) > swipeThreshold && !mMainActivity.getFireButtonPressed()) {
                     mMainActivity.playModeSwitchToOpponentGrid(null);
-                } else if (abs(initialX - finalX) > swipeThreshold) {
+                } else if (abs(initialX - finalX) > swipeThreshold && !mMainActivity.getFireButtonPressed()) {
                     mMainActivity.playModeSwitchToPlayerGrid(null);
                 }
                 break;

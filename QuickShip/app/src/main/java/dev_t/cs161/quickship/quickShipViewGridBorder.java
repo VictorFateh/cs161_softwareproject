@@ -7,14 +7,7 @@ import android.graphics.Point;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.Display;
-import android.view.MotionEvent;
 import android.view.View;
-import android.widget.FrameLayout;
-import android.widget.ImageView;
-
-import java.util.ArrayList;
-
-import static java.lang.Math.abs;
 
 public class quickShipViewGridBorder extends View {
 

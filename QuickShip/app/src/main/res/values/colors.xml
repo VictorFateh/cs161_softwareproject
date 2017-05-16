@@ -25,6 +25,9 @@
     <color name="play_mode_player_ship_miss">#2f477f</color>
     <color name="play_mode_player_cell_selected">#f4a442</color>
     <color name="play_mode_status">#ff2626</color>
+    <color name="play_mode_new_turn1_msg_color">#de7d3c</color>
+    <color name="play_mode_new_turn2_msg_color">#de7d3c</color>
+    <color name="play_mode_gameover_color">#de7d3c</color>
 
     <color name="choose_mode_top">#758e9f</color>
     <color name="choose_mode_bottom">#758e9f</color>
@@ -42,4 +45,8 @@
     <color name="choose_mode_chat_message_hint">#c7c6c6</color>
     <color name="choose_mode_ship_not_selected">#758e9f</color>
     <color name="choose_mode_ship_selected">#e27807</color>
+
+    <color name="nav_bar_tint">#ffffff</color>
+    <color name="nav_bar_background">#454545</color>
+    <color name="nav_bar_selected">#3f6cd4</color>
 </resources>

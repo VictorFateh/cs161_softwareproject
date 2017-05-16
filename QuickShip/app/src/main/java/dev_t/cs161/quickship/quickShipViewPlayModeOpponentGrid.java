@@ -1,7 +1,5 @@
 package dev_t.cs161.quickship;
 
-import android.app.Activity;
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -9,12 +7,7 @@ import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.RectF;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
 import android.support.v4.content.ContextCompat;
-import android.text.Layout;
-import android.text.StaticLayout;
-import android.text.TextPaint;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
@@ -100,11 +93,11 @@ public class quickShipViewPlayModeOpponentGrid extends View {
         boardGridFramePaint.setColor(ContextCompat.getColor(mMainActivity, R.color.play_mode_opponent_grid));
         boatHitPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         boatHitPaint.setStyle(Paint.Style.FILL);
-        boatHitPaint.setColor(mMainActivity.getResources().getColor(R.color.play_mode_opponent_ship_hit));
+        boatHitPaint.setColor(ContextCompat.getColor(mMainActivity, R.color.play_mode_opponent_ship_hit));
 
         boatMissPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         boatMissPaint.setStyle(Paint.Style.FILL);
-        boatMissPaint.setColor(mMainActivity.getResources().getColor(R.color.play_mode_opponent_ship_miss));
+        boatMissPaint.setColor(ContextCompat.getColor(mMainActivity, R.color.play_mode_opponent_ship_miss));
 
         boardGridLinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         boardGridLinePaint.setStyle(Paint.Style.STROKE);
@@ -112,11 +105,11 @@ public class quickShipViewPlayModeOpponentGrid extends View {
         DisplayMetrics dm = mMainActivity.getResources().getDisplayMetrics();
         boardGridLinePaintStrokeWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dpSize, dm);
         boardGridLinePaint.setStrokeWidth(boardGridLinePaintStrokeWidth);
-        boardGridLinePaint.setColor(mMainActivity.getResources().getColor(R.color.play_mode_opponent_grid_line));
+        boardGridLinePaint.setColor(ContextCompat.getColor(mMainActivity, R.color.play_mode_opponent_grid_line));
 
         boardGridSelectedPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         boardGridSelectedPaint.setStyle(Paint.Style.FILL);
-        boardGridSelectedPaint.setColor(mMainActivity.getResources().getColor(R.color.play_mode_player_cell_selected));
+        boardGridSelectedPaint.setColor(ContextCompat.getColor(mMainActivity, R.color.play_mode_player_cell_selected));
         boardGridFrameDividerX = new Float[11];
         boardGridFrameDividerY = new Float[11];
 
@@ -157,11 +150,10 @@ public class quickShipViewPlayModeOpponentGrid extends View {
         boardGridCellWidth = boardGridFrameWidth / 10;
         boardGridCellHeight = boardGridFrameHeight / 10;
 
-        String hitString = mMainActivity.getResources().getString(R.string.hit_text);
-        String missString = mMainActivity.getResources().getString(R.string.miss_text);
+        mMainActivity.setHitText(mMainActivity.scaleDownDrawableImage(R.drawable.marker_hit, Math.round(boardGridCellHeight), Math.round(boardGridCellWidth)));
+        mMainActivity.setMissText(mMainActivity.scaleDownDrawableImage(R.drawable.marker_miss, Math.round(boardGridCellHeight), Math.round(boardGridCellWidth)));
 
-        mMainActivity.setHitText(mMainActivity.textToBitmap(hitString, boardGridCellWidth));
-        mMainActivity.setMissText(mMainActivity.textToBitmap(missString, boardGridCellWidth));
+        mMainActivity.setCellWidth(boardGridCellWidth);
 
         hitSquare = new Rect();
 
@@ -282,52 +274,53 @@ public class quickShipViewPlayModeOpponentGrid extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        int action = event.getAction();
-        switch (action) {
-            case MotionEvent.ACTION_DOWN:
-                initialX = event.getX();
-                initialY = event.getY();
-                held = true;
-                break;
-            case MotionEvent.ACTION_MOVE:
-                break;
-            case MotionEvent.ACTION_UP:
-                endX = event.getX();
-                endY = event.getY();
-                if (initialX > endX && abs(initialX - endX) > swipeThreshold) {
-                    mMainActivity.playModeSwitchToOptions(null);
-                } else if (abs(initialX - endX) > swipeThreshold) {
-                    mMainActivity.playModeSwitchToPlayerGrid(null);
-                } else {
-                    if (!mMainActivity.isPlayerTurnDone()) {
-                        if (endX >= boardGridFrameStartX && endX <= boardGridFrameEndX && endY >= boardGridFrameStartY && endY <= boardGridFrameEndY && abs(endX - initialX) < 5 && abs(endY - initialY) < 5) {
-                            selectedIndex = calculateCellTouched(initialX, initialY);
-                            if (!mGameModel.getOpponentGameBoard().isHit(selectedIndex)) {
-                                if (selectedIndex != currentIndex) {
-                                    currentIndex = selectedIndex;
-                                    Log.d("debug", "Index: " + currentIndex);
-                                    calculateSelectedRect(currentIndex);
-                                    mMainActivity.setPlayModeFireBtnStatus(true);
-                                    mMainActivity.setButtonBack(true);
+        if (!mMainActivity.getAnimating()) {
+            int action = event.getAction();
+            switch (action) {
+                case MotionEvent.ACTION_DOWN:
+                    initialX = event.getX();
+                    initialY = event.getY();
+                    held = true;
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    break;
+                case MotionEvent.ACTION_UP:
+                    endX = event.getX();
+                    endY = event.getY();
+                    if (initialX > endX && abs(initialX - endX) > swipeThreshold && !mMainActivity.getFireButtonPressed()) {
+                        mMainActivity.playModeSwitchToOptions(null);
+                    } else if (abs(initialX - endX) > swipeThreshold && !mMainActivity.getFireButtonPressed()) {
+                        mMainActivity.playModeSwitchToPlayerGrid(null);
+                    } else {
+                        if (!mMainActivity.isPlayerTurnDone() && !mMainActivity.getGameOver() && !mMainActivity.getFireButtonPressed()) {
+                            if (endX >= boardGridFrameStartX && endX <= boardGridFrameEndX && endY >= boardGridFrameStartY && endY <= boardGridFrameEndY && abs(endX - initialX) < 5 && abs(endY - initialY) < 5) {
+                                selectedIndex = calculateCellTouched(initialX, initialY);
+                                if (!mGameModel.getOpponentGameBoard().isHit(selectedIndex)) {
+                                    if (selectedIndex != currentIndex) {
+                                        currentIndex = selectedIndex;
+                                        Log.d("debug", "Index: " + currentIndex);
+                                        calculateSelectedRect(currentIndex);
+                                        mMainActivity.setPlayModeFireBtnStatus(true);
+                                        mMainActivity.setButtonBack(true);
+                                    }
+                                } else {
+                                    deSelectCell();
                                 }
                             } else {
                                 deSelectCell();
                             }
-                        } else {
-                            deSelectCell();
+                            invalidate();
                         }
                     }
-                }
-                held = false;
-                break;
-            case MotionEvent.ACTION_CANCEL:
-                break;
-            case MotionEvent.ACTION_OUTSIDE:
-                break;
-            default:
+                    held = false;
+                    break;
+                case MotionEvent.ACTION_CANCEL:
+                    break;
+                case MotionEvent.ACTION_OUTSIDE:
+                    break;
+                default:
+            }
         }
-
-        invalidate();
         return true;
     }
 

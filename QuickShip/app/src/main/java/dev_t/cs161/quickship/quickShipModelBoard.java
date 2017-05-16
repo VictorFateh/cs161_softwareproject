@@ -1,10 +1,6 @@
 package dev_t.cs161.quickship;
 
-import android.os.Parcel;
-import android.os.Parcelable;
 import android.util.Log;
-
-import com.google.gson.Gson;
 
 import java.util.ArrayList;
 
@@ -382,19 +378,20 @@ public class quickShipModelBoard {
             //isAnchor_isOccupied_booleans used to save isAnchor and isOccupied booleans in least significant bits
             byte isAnchor_isOccupied_booleans = 0b00000000;
             if(completeBoard[i].isAnchor()) {
-                Log.d("Board Debug","isAnchor @ "+i);
+                //Log.d("Board Debug","isAnchor @ "+i);
                 isAnchor_isOccupied_booleans = setBit(isAnchor_isOccupied_booleans, 0);
             }
             if(completeBoard[i].isOccupied()){
-                Log.d("Board Debug","isOccupied @ "+i);
+                //Log.d("Board Debug","isOccupied @ "+i);
                 isAnchor_isOccupied_booleans = setBit(isAnchor_isOccupied_booleans, 1);
             }
             board[j++] = isAnchor_isOccupied_booleans;
             board[j++] = (byte) completeBoard[i].getAnchorIndex();
             board[j++] =  (byte) completeBoard[i].getOrientation();
             board[j++] = (byte) completeBoard[i].getShipType();
-            if(completeBoard[i].getAnchorIndex() > 0)
-                Log.d("Board Debug","getAnchorIndex @ "+completeBoard[i].getAnchorIndex());
+
+            //if(completeBoard[i].getAnchorIndex() > 0)
+                //Log.d("Board Debug","getAnchorIndex @ "+completeBoard[i].getAnchorIndex());
 
         }
         return board;
