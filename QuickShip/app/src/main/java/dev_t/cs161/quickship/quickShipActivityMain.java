@@ -163,6 +163,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
     static final int LOST = 1;
     static final int DRAW = 2;
     private BottomNavigationView mBottomNavigation;
+    private boolean receivedGameOverState;
 
     private static final UUID MY_UUID_INSECURE = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
 
@@ -376,6 +377,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
         topPlayerFrameBorder.addView(new quickShipViewGridBorder(this, ContextCompat.getColor(this, R.color.play_mode_player_frame_color)));
 
         mFPSTextureView = (FPSTextureView) findViewById(R.id.animation_texture_view);
+        mFPSTextureView.tickStart();
     }
 
     public void emojiPopUpInitializer() {
@@ -605,18 +607,18 @@ public class quickShipActivityMain extends Activity implements Runnable {
     }
 
     public void reinitializeUI() {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if (playModeFlipper.getDisplayedChild() == 0) {
-                    //Set Player Item to checked
-                } else if (playModeFlipper.getDisplayedChild() == 1) {
-                    //Set opponent item to checked
-                } else {
-                    //Set Options menu to checked
-                }
-            }
-        });
+//        runOnUiThread(new Runnable() {
+//            @Override
+//            public void run() {
+//                if (playModeFlipper.getDisplayedChild() == 0) {
+//                    //Set Player Item to checked
+//                } else if (playModeFlipper.getDisplayedChild() == 1) {
+//                    //Set opponent item to checked
+//                } else {
+//                    //Set Options menu to checked
+//                }
+//            }
+//        });
     }
 
     public void newGame() {
@@ -625,6 +627,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
         quitGamePushed = false;
         leftGameDisplayedOnce = false;
         fireButtonPressed = false;
+        receivedGameOverState = false;
         gameOverStatus = 3;
         turnCount = 1;
 
@@ -826,17 +829,11 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
             if (animateFirst == null) {
                 setAnimateFirst();
-                //quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.UUID, playerUUID);
-                //mBluetoothConnection.write(ParcelableUtil.marshall(data));
             }
 
             mainScreenViewFlipper.setDisplayedChild(2);
             cachePlayModeViews();
             reinitializeUI();
-            messages.setLength(0);
-            String msg = getColoredSpanned(getResources().getString(R.string.choose_mode_chat_game_started_message), "#eda136");
-            messages.append(msg + getResources().getString(R.string.play_mode_break_tags_chat));
-            appendToChat();
         } else {
             if (status.equals("player")) {
                 String msg = getColoredSpanned(getResources().getString(R.string.choose_mode_chat_player_ready_message), "#eda136");
@@ -869,7 +866,7 @@ public class quickShipActivityMain extends Activity implements Runnable {
         opponentChooseModeDone = false;
         playerTurnDone = false;
         opponentTurnDone = false;
-        messages.setLength(0);
+        mFPSTextureView.removeAllChildren();
 
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
@@ -879,8 +876,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        animationReset();
-                        pauseAnimation();
                         switchToSplashScreen(null);
                         mBluetoothConnection.disconnect_threads();
                     }
@@ -911,8 +906,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        animationReset();
-                        pauseAnimation();
                         switchToSplashScreen(null);
                         mBluetoothConnection.disconnect_threads();
                     }
@@ -935,10 +928,10 @@ public class quickShipActivityMain extends Activity implements Runnable {
         }
     }
 
-    public void setAnimateFirst(){
-        if(playerUUID.compareTo(opponentUUID) > 0){
+    public void setAnimateFirst() {
+        if (playerUUID.compareTo(opponentUUID) > 0) {
             animateFirst = true;
-        }else{
+        } else {
             animateFirst = false;
         }
     }
@@ -1024,8 +1017,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
 
     public void nextAnimation() {
         if (animateFirst == null) {
-            //quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.UUID, playerUUID);
-            //mBluetoothConnection.write(ParcelableUtil.marshall(data));
             setAnimateFirst();
             ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
             scheduler.schedule(new Runnable() {
@@ -1037,7 +1028,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
         } else {
             switch (animationStage) {
                 case quickShipActivityMain.ANIMSTAGE1:
-                    animationReset();
                     if (animateFirst) {
                         startPlayerBoardAnimation();
                     } else {
@@ -1045,7 +1035,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     }
                     break;
                 case quickShipActivityMain.ANIMSTAGE2:
-                    animationReset();
                     if (animateFirst) {
                         startOpponentBoardAnimation();
                     } else {
@@ -1053,7 +1042,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     }
                     break;
                 case quickShipActivityMain.ANIMSTAGE3:
-                    animationReset();
                     quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.ANIMATIONDONE, true);
                     mBluetoothConnection.write(ParcelableUtil.marshall(data));
                     if (!opponentAnimating) {
@@ -1070,7 +1058,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     }
                     break;
                 case quickShipActivityMain.ANIMSTAGE4:
-                    animationReset();
                     boolean playerGameOver = mGameModel.getPlayerGameBoard().checkGameOver();
                     boolean opponentGameOver = mGameModel.getOpponentGameBoard().checkGameOver();
                     if (!debugButtons && !playerGameOver && !opponentGameOver) {
@@ -1103,8 +1090,10 @@ public class quickShipActivityMain extends Activity implements Runnable {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.GAME_LOST, true);
-                    mBluetoothConnection.write(ParcelableUtil.marshall(data));
+                    if (!receivedGameOverState) {
+                        quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.GAME_LOST, true);
+                        mBluetoothConnection.write(ParcelableUtil.marshall(data));
+                    }
                     gameOver = true;
                     debugButtons = true;
                     gameOverStatus = quickShipActivityMain.WON;
@@ -1115,7 +1104,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     mPlayModeEditTextSend.setEnabled(false);
                     playModeOpponentGrid.deSelectCell();
                     playModeOpponentGrid.invalidate();
-                    mFPSTextureView.tickStart();
                     nextAnimation();
                 }
             });
@@ -1127,8 +1115,10 @@ public class quickShipActivityMain extends Activity implements Runnable {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.GAME_WON, true);
-                    mBluetoothConnection.write(ParcelableUtil.marshall(data));
+                    if (!receivedGameOverState) {
+                        quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.GAME_WON, true);
+                        mBluetoothConnection.write(ParcelableUtil.marshall(data));
+                    }
                     gameOver = true;
                     debugButtons = true;
                     gameOverStatus = quickShipActivityMain.LOST;
@@ -1139,7 +1129,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     mPlayModeEditTextSend.setEnabled(false);
                     playModeOpponentGrid.deSelectCell();
                     playModeOpponentGrid.invalidate();
-                    mFPSTextureView.tickStart();
                     nextAnimation();
                 }
             });
@@ -1151,8 +1140,10 @@ public class quickShipActivityMain extends Activity implements Runnable {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.GAME_DRAW, true);
-                    mBluetoothConnection.write(ParcelableUtil.marshall(data));
+                    if (!receivedGameOverState) {
+                        quickShipBluetoothPacketsToBeSent data = new quickShipBluetoothPacketsToBeSent(quickShipBluetoothPacketsToBeSent.GAME_DRAW, true);
+                        mBluetoothConnection.write(ParcelableUtil.marshall(data));
+                    }
                     gameOver = true;
                     debugButtons = true;
                     gameOverStatus = quickShipActivityMain.DRAW;
@@ -1163,7 +1154,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
                     mPlayModeEditTextSend.setEnabled(false);
                     playModeOpponentGrid.deSelectCell();
                     playModeOpponentGrid.invalidate();
-                    mFPSTextureView.tickStart();
                     nextAnimation();
                 }
             });
@@ -1288,26 +1278,36 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         break;
 
                     case quickShipBluetoothPacketsToBeSent.ANIMATIONDONE:
-                        receivedAnimationStatus();
+                        if (!debugButtons) {
+                            receivedAnimationStatus();
+                        }
                         break;
 
                     case quickShipBluetoothPacketsToBeSent.UUID:
-                        //receivedOpponentUUID(data.getPlayerID());
                         break;
 
                     case quickShipBluetoothPacketsToBeSent.TURN_DONE:
                         break;
 
                     case quickShipBluetoothPacketsToBeSent.GAME_WON:
-                        winGame(null);
+                        if (!debugButtons) {
+                            receivedGameOverState = true;
+                            winGame(null);
+                        }
                         break;
 
                     case quickShipBluetoothPacketsToBeSent.GAME_LOST:
-                        loseGame(null);
+                        if (!debugButtons) {
+                            receivedGameOverState = true;
+                            loseGame(null);
+                        }
                         break;
 
                     case quickShipBluetoothPacketsToBeSent.GAME_DRAW:
-                        drawGame(null);
+                        if (!debugButtons) {
+                            receivedGameOverState = true;
+                            drawGame(null);
+                        }
                         break;
 
                     case quickShipBluetoothPacketsToBeSent.QUIT:
@@ -1662,12 +1662,21 @@ public class quickShipActivityMain extends Activity implements Runnable {
                         mBottomNavigation.getMenu().getItem(1).setChecked(true);
                         mBottomNavigation.getMenu().getItem(0).setChecked(false);
                         mBottomNavigation.getMenu().getItem(2).setChecked(false);
-                        mFPSTextureView.tickStart();
-                        animationReset();
                     }
                 });
             }
         }, 200, TimeUnit.MILLISECONDS);
+
+        ScheduledExecutorService scheduler2 = Executors.newScheduledThreadPool(1);
+        scheduler2.schedule(new Runnable() {
+            @Override
+            public void run() {
+                messages.setLength(0);
+                String msg = getColoredSpanned(getResources().getString(R.string.choose_mode_chat_game_started_message), "#eda136");
+                messages.append(msg + getResources().getString(R.string.play_mode_break_tags_chat));
+                appendToChat();
+            }
+        }, 400, TimeUnit.MILLISECONDS);
     }
 
     public void startPlayerBoardAnimation() {
@@ -1844,7 +1853,6 @@ public class quickShipActivityMain extends Activity implements Runnable {
         animating = false;
         fireButtonPressed = false;
         if (!gameOver) {
-            pauseAnimation();
             turnCount++;
             playerTurnDone = false;
             opponentTurnDone = false;
